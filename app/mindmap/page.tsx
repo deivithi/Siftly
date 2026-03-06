@@ -255,7 +255,7 @@ function MindmapOverlay({
     : null
 
   return (
-    <div className="absolute inset-0 z-20 flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm">
       <div className="bg-zinc-900 border border-zinc-700/60 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl text-center">
         {done ? (
           <div className="flex flex-col items-center gap-4">

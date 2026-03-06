@@ -36,11 +36,15 @@ export default function CategoryNode({ data }: CategoryNodeProps) {
 
   const mid = darkenColor(color, 0.75)
   const dark = darkenColor(color, 0.42)
+  // Empty categories render smaller and more translucent so they look intentional
+  const isEmpty = count === 0
+  const size = isEmpty ? 90 : 112
+  const nodeOpacity = isEmpty ? 0.5 : 1
 
   return (
     <div
       className="relative flex flex-col items-center justify-center rounded-full select-none cursor-pointer transition-transform hover:scale-105 active:scale-95"
-      style={{ width: 112, height: 112 }}
+      style={{ width: size, height: size, opacity: nodeOpacity }}
     >
       {/* Outer pulse ring */}
       <div

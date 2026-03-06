@@ -22,14 +22,24 @@ interface MindMapResponse {
 }
 
 const ROOT_POSITION = { x: 0, y: 0 }
-const CATEGORY_RADIUS = 300
 const TWEET_RADIUS = 200
 
-function categoryPosition(index: number, total: number): { x: number; y: number } {
+// Keep category nodes equidistant: radius scales with count so the gap between
+// node edges stays constant (~36px) regardless of how many categories exist.
+const CAT_NODE_DIAMETER = 112
+const CAT_NODE_GAP = 36
+const CAT_MIN_RADIUS = 200
+
+function categoryRadius(count: number): number {
+  const circumference = count * (CAT_NODE_DIAMETER + CAT_NODE_GAP)
+  return Math.max(CAT_MIN_RADIUS, Math.round(circumference / (2 * Math.PI)))
+}
+
+function categoryPosition(index: number, total: number, radius: number): { x: number; y: number } {
   const angle = (2 * Math.PI * index) / total - Math.PI / 2
   return {
-    x: Math.round(ROOT_POSITION.x + CATEGORY_RADIUS * Math.cos(angle)),
-    y: Math.round(ROOT_POSITION.y + CATEGORY_RADIUS * Math.sin(angle)),
+    x: Math.round(ROOT_POSITION.x + radius * Math.cos(angle)),
+    y: Math.round(ROOT_POSITION.y + radius * Math.sin(angle)),
   }
 }
 
@@ -63,6 +73,7 @@ async function getBaseGraph(): Promise<MindMapResponse> {
     position: ROOT_POSITION,
   }
 
+  const radius = categoryRadius(categories.length)
   const categoryNodes: MindMapNode[] = categories.map((cat, index) => ({
     id: `cat-${cat.slug}`,
     type: 'category',
@@ -73,7 +84,7 @@ async function getBaseGraph(): Promise<MindMapResponse> {
       count: cat._count.bookmarks,
       description: cat.description,
     },
-    position: categoryPosition(index, categories.length),
+    position: categoryPosition(index, categories.length, radius),
   }))
 
   const categoryEdges: MindMapEdge[] = categories.map((cat) => ({
