@@ -12,12 +12,63 @@ import {
   X,
   ChevronDown,
   ArrowUpDown,
+  RefreshCw,
+  ExternalLink,
 } from 'lucide-react'
 import * as Select from '@radix-ui/react-select'
 import BookmarkCard from '@/components/bookmark-card'
 import type { BookmarkWithMedia, BookmarksResponse } from '@/lib/types'
 
 const PAGE_SIZE = 24
+
+function SyncBanner() {
+  const [show, setShow] = useState(false)
+  const [label, setLabel] = useState('')
+
+  useEffect(() => {
+    fetch('/api/settings/twitter')
+      .then((r) => r.json())
+      .then((d: { connected?: boolean; lastSync?: string | null }) => {
+        if (!d.connected) return
+        if (!d.lastSync) {
+          setLabel('Nunca sincronizado')
+          setShow(true)
+          return
+        }
+        const hours = (Date.now() - new Date(d.lastSync).getTime()) / 3600000
+        if (hours >= 24) {
+          const days = Math.floor(hours / 24)
+          setLabel(days === 1 ? 'Última sync: ontem' : `Última sync: há ${days} dias`)
+          setShow(true)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  if (!show) return null
+
+  return (
+    <div className="flex items-center gap-3 mb-5 px-4 py-2.5 rounded-xl bg-amber-500/5 border border-amber-500/20 text-sm">
+      <RefreshCw size={13} className="text-amber-400 shrink-0" />
+      <span className="text-amber-300/80 flex-1">{label}</span>
+      <a
+        href="https://x.com/i/bookmarks"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-medium transition-colors shrink-0"
+      >
+        Sincronizar <ExternalLink size={11} />
+      </a>
+      <button
+        onClick={() => setShow(false)}
+        className="text-amber-500/40 hover:text-amber-300 transition-colors"
+        aria-label="Fechar"
+      >
+        <X size={13} />
+      </button>
+    </div>
+  )
+}
 
 interface Filters {
   q: string
@@ -368,6 +419,8 @@ function BookmarksPageInner() {
 
       {/* ── Content ── */}
       <div className="flex-1 px-6 md:px-8 py-6 max-w-7xl mx-auto w-full">
+
+        <SyncBanner />
 
         {/* Results count */}
         {!loading && (

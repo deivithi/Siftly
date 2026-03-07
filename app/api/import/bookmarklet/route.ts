@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { updateLastSync } from '@/lib/twitter-session'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -120,6 +121,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     imported++
+  }
+
+  if (imported > 0) {
+    await updateLastSync().catch(() => {})
   }
 
   return NextResponse.json({ imported, skipped }, { headers: CORS })

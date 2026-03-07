@@ -254,6 +254,18 @@ export async function getStoredCredentials(): Promise<XCredentials | null> {
 }
 
 /**
+ * Updates the twitterLastSync timestamp in the database.
+ * Called by the bookmarklet import route after a successful import.
+ */
+export async function updateLastSync(): Promise<void> {
+  await prisma.setting.upsert({
+    where: { key: 'twitterLastSync' },
+    create: { key: 'twitterLastSync', value: new Date().toISOString() },
+    update: { value: new Date().toISOString() },
+  })
+}
+
+/**
  * Validates credentials by attempting to fetch a single page of bookmarks.
  * Returns null on success, error message on failure.
  */

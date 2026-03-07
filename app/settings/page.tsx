@@ -14,13 +14,11 @@ import {
   Shield,
   ExternalLink,
   ChevronDown,
-  Zap,
   Copy,
   Coffee,
   Terminal,
   Loader2,
   X,
-  RefreshCw,
   Twitter,
   Unlink,
 } from 'lucide-react'
@@ -553,10 +551,6 @@ function TwitterSection({ onToast }: { onToast: (t: Toast) => void }) {
   const [ct0, setCt0] = useState('')
   const [showToken, setShowToken] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<'idle' | 'ok' | 'fail'>('idle')
-  const [testError, setTestError] = useState('')
-  const [syncing, setSyncing] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
 
   function loadStatus() {
@@ -574,7 +568,6 @@ function TwitterSection({ onToast }: { onToast: (t: Toast) => void }) {
       return
     }
     setSaving(true)
-    setTestResult('idle')
     try {
       const res = await fetch('/api/settings/twitter', {
         method: 'POST',
@@ -588,8 +581,7 @@ function TwitterSection({ onToast }: { onToast: (t: Toast) => void }) {
       setAuthToken('')
       setCt0('')
       loadStatus()
-      // Auto-test after saving
-      void handleTest()
+      onToast({ type: 'success', message: 'Credenciais salvas. Agora use o bookmarklet para sincronizar.' })
     } catch (err) {
       onToast({ type: 'error', message: err instanceof Error ? err.message : 'Falha ao salvar' })
     } finally {
@@ -597,45 +589,12 @@ function TwitterSection({ onToast }: { onToast: (t: Toast) => void }) {
     }
   }
 
-  async function handleTest() {
-    setTesting(true)
-    setTestResult('idle')
-    setTestError('')
-    try {
-      const res = await fetch('/api/settings/twitter/test', { method: 'POST' })
-      const d = await res.json() as { ok: boolean; error?: string }
-      if (d.ok) {
-        setTestResult('ok')
-        onToast({ type: 'success', message: 'X conectado com sucesso! Credenciais válidas.' })
-      } else {
-        setTestResult('fail')
-        setTestError(d.error ?? 'Credenciais inválidas')
-        onToast({ type: 'error', message: d.error ?? 'Credenciais inválidas — verifique auth_token e ct0' })
-      }
-    } catch {
-      setTestResult('fail')
-      setTestError('Erro de conexão')
-    } finally {
-      setTesting(false)
-    }
-  }
-
-  async function handleSync() {
-    setSyncing(true)
-    try {
-      const res = await fetch('/api/sync/twitter', { method: 'POST' })
-      const d = await res.json() as { imported?: number; skipped?: number; error?: string }
-      if (!res.ok) throw new Error(d.error ?? 'Falha ao sincronizar')
-      loadStatus()
-      onToast({
-        type: 'success',
-        message: `Sincronizado! ${d.imported ?? 0} novos bookmarks${d.skipped ? `, ${d.skipped} ignorados` : ''}.`,
-      })
-    } catch (err) {
-      onToast({ type: 'error', message: err instanceof Error ? err.message : 'Erro ao sincronizar' })
-    } finally {
-      setSyncing(false)
-    }
+  function handleSync() {
+    window.open('https://x.com/i/bookmarks', '_blank', 'noopener,noreferrer')
+    onToast({
+      type: 'success',
+      message: 'x.com/bookmarks aberto. Clique no bookmarklet "Siftly Import" para sincronizar.',
+    })
   }
 
   async function handleDisconnect() {
@@ -659,9 +618,22 @@ function TwitterSection({ onToast }: { onToast: (t: Toast) => void }) {
   return (
     <Section
       icon={Twitter}
-      title="X / Twitter — Sincronização Automática"
-      description="Conecte sua conta X para importar todos os bookmarks e sincronizar automaticamente todo dia."
+      title="X / Twitter — Sincronização"
+      description="Armazene suas credenciais X para rastrear syncs. A sincronização acontece via bookmarklet no seu navegador."
     >
+      {/* IP blocking explanation */}
+      <div className="flex gap-3 p-3.5 rounded-xl bg-amber-500/5 border border-amber-500/20 mb-4">
+        <Info size={14} className="text-amber-400 shrink-0 mt-0.5" />
+        <div className="text-xs text-amber-300/80 leading-relaxed">
+          <strong className="text-amber-200">Por que não sync automático?</strong> O X bloqueia
+          requisições de IPs de datacenter (Vercel). O bookmarklet funciona porque roda no{' '}
+          <em>seu</em> navegador, com seu IP.{' '}
+          <a href="/twitter-import" className="underline text-indigo-400">
+            Instalar bookmarklet →
+          </a>
+        </div>
+      </div>
+
       {/* Status banner */}
       {status?.connected ? (
         <div className="flex flex-col gap-2 p-3.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 mb-5">
@@ -669,43 +641,27 @@ function TwitterSection({ onToast }: { onToast: (t: Toast) => void }) {
             <Check size={15} className="text-emerald-400 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-emerald-300">
-                Conectado ao X
+                Credenciais armazenadas
                 {status.hasTwid && <span className="ml-2 text-xs text-emerald-500 font-normal">(+ twid ✓)</span>}
               </p>
               <p className="text-xs text-zinc-500 mt-0.5 font-mono truncate">
                 Token: {status.maskedToken}
                 {status.lastSync && (
-                  <span className="ml-2 not-italic">· Última sync: {formatLastSync(status.lastSync)}</span>
+                  <span className="ml-2 not-italic font-sans">· Última sync: {formatLastSync(status.lastSync)}</span>
+                )}
+                {!status.lastSync && (
+                  <span className="ml-2 not-italic font-sans">· Nunca sincronizado</span>
                 )}
               </p>
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">
             <button
-              onClick={() => void handleTest()}
-              disabled={testing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-300 bg-zinc-700/60 hover:bg-zinc-700 border border-zinc-600 transition-colors disabled:opacity-50"
+              onClick={handleSync}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 transition-colors"
             >
-              {testing ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
-              {testing ? 'Testando…' : 'Testar conexão'}
-            </button>
-            {testResult === 'ok' && (
-              <span className="flex items-center gap-1 text-xs text-emerald-400 px-2">
-                <Check size={11} /> Credenciais válidas
-              </span>
-            )}
-            {testResult === 'fail' && (
-              <span className="flex items-center gap-1 text-xs text-red-400 px-2" title={testError}>
-                <AlertCircle size={11} /> {testError.slice(0, 50) || 'Inválido'}
-              </span>
-            )}
-            <button
-              onClick={() => void handleSync()}
-              disabled={syncing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
-              {syncing ? 'Sincronizando…' : 'Sincronizar agora'}
+              <ExternalLink size={12} />
+              Abrir x.com/bookmarks
             </button>
             <button
               onClick={() => void handleDisconnect()}
@@ -721,7 +677,7 @@ function TwitterSection({ onToast }: { onToast: (t: Toast) => void }) {
         <div className="flex gap-3 p-3.5 rounded-xl bg-zinc-800/60 border border-zinc-700 mb-5">
           <AlertCircle size={15} className="text-zinc-400 shrink-0 mt-0.5" />
           <p className="text-sm text-zinc-400">
-            Não conectado. Siga as instruções abaixo para conectar sua conta X.
+            Não conectado. Siga as instruções abaixo para salvar suas credenciais (opcional — o bookmarklet funciona sem isso).
           </p>
         </div>
       )}
@@ -796,7 +752,7 @@ function TwitterSection({ onToast }: { onToast: (t: Toast) => void }) {
       </div>
 
       <p className="text-xs text-zinc-600 mt-3">
-        Sync automático: todo dia às 05:00 (horário de Brasília) via Vercel Cron. Seus tokens ficam armazenados apenas neste banco de dados privado.
+        Seus tokens ficam armazenados apenas neste banco de dados privado. O bookmarklet atualiza automaticamente o ct0 a cada uso.
       </p>
     </Section>
   )
