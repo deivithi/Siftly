@@ -35,45 +35,44 @@ jobs:
           UPSTREAM_SHA=$(git rev-parse upstream/main)
           MERGE_BASE=$(git merge-base HEAD upstream/main)
           if [ "$UPSTREAM_SHA" = "$MERGE_BASE" ]; then
-            echo "no_changes=true" >> $GITHUB_OUTPUT
+            echo "has_changes=false" >> $GITHUB_OUTPUT
             echo "Sem novas atualizações no upstream."
           else
-            echo "no_changes=false" >> $GITHUB_OUTPUT
+            echo "has_changes=true" >> $GITHUB_OUTPUT
             echo "Novas atualizações encontradas!"
+            git log --oneline "$MERGE_BASE..upstream/main"
           fi
 
-      - name: Merge upstream into our fork
-        if: steps.check.outputs.no_changes == 'false'
+      - name: Merge upstream (mantendo nossas customizações)
+        if: steps.check.outputs.has_changes == 'true'
         run: |
+          # --strategy-option=ours garante que nossas modificações prevalecem em conflitos
           git merge upstream/main \
             --no-edit \
             --strategy-option=ours \
             -m "chore: sync upstream viperrcrypto/Siftly" \
-            || (echo "Conflito de merge detectado. Abortando." && git merge --abort && exit 1)
+          || {
+            echo "❌ Conflito de merge não resolvível automaticamente."
+            git merge --abort
+            exit 1
+          }
 
-      - name: Push changes
-        if: steps.check.outputs.no_changes == 'false'
+      - name: Push para o fork
+        if: steps.check.outputs.has_changes == 'true'
         run: git push origin main
 
-      - name: Trigger Vercel redeploy
-        if: steps.check.outputs.no_changes == 'false'
+      - name: Setup Node.js
+        if: steps.check.outputs.has_changes == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI e fazer deploy
+        if: steps.check.outputs.has_changes == 'true'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_TEAM_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
         run: |
-          curl -s -X POST \
-            "https://api.vercel.com/v13/deployments" \
-            -H "Authorization: Bearer $VERCEL_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "name": "siftly",
-              "gitSource": {
-                "type": "github",
-                "repoId": "${{ github.repository_id }}",
-                "ref": "main"
-              },
-              "projectId": "'"$VERCEL_PROJECT_ID"'",
-              "teamId": "'"$VERCEL_TEAM_ID"'",
-              "target": "production"
-            }' | python3 -c "import sys,json; d=json.load(sys.stdin); print('Deploy:', d.get('url', d.get('error','?')))"
+          npm install -g vercel@latest
+          vercel deploy --prod --token "$VERCEL_TOKEN" --yes
