@@ -158,7 +158,7 @@ function Pagination({
         className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-700 hover:bg-zinc-800 disabled:opacity-25 disabled:cursor-not-allowed transition-all"
       >
         <ChevronLeft size={14} />
-        Prev
+        Anterior
       </button>
 
       <div className="flex items-center gap-1">
@@ -186,7 +186,7 @@ function Pagination({
         disabled={page >= totalPages}
         className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-700 hover:bg-zinc-800 disabled:opacity-25 disabled:cursor-not-allowed transition-all"
       >
-        Next
+        Próxima
         <ChevronRight size={14} />
       </button>
     </div>
@@ -248,18 +248,18 @@ function BookmarksPageInner() {
   }
 
   const mediaOptions = [
-    { label: 'Photos', value: 'photo' },
-    { label: 'Videos', value: 'video' },
+    { label: 'Fotos', value: 'photo' },
+    { label: 'Vídeos', value: 'video' },
   ]
 
   const sortOptions = [
-    { label: 'Newest first', value: 'newest' },
-    { label: 'Oldest first', value: 'oldest' },
+    { label: 'Mais recentes primeiro', value: 'newest' },
+    { label: 'Mais antigos primeiro', value: 'oldest' },
   ]
 
   const hasActiveFilters = !!(filters.q || filters.category || filters.mediaType || filters.sort !== 'newest' || filters.uncategorized)
 
-  const sortLabel = sortOptions.find((o) => o.value === filters.sort)?.label ?? 'Newest first'
+  const sortLabel = sortOptions.find((o) => o.value === filters.sort)?.label ?? 'Mais recentes primeiro'
 
   return (
     <div className="flex flex-col h-full">
@@ -274,7 +274,7 @@ function BookmarksPageInner() {
               <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search bookmarks..."
+                placeholder="Buscar bookmarks..."
                 value={searchInput}
                 onChange={(e) => updateSearch(e.target.value)}
                 className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-100 placeholder:text-zinc-600 text-sm focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/20 transition-all"
@@ -294,14 +294,14 @@ function BookmarksPageInner() {
               value={filters.mediaType}
               onChange={(v) => updateFilter('mediaType', v)}
               options={mediaOptions}
-              placeholder="All media"
+              placeholder="Todas as mídias"
             />
 
             {/* Sort */}
             <button
               onClick={() => updateFilter('sort', filters.sort === 'newest' ? 'oldest' : 'newest')}
               className="flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-sm text-zinc-400 hover:border-zinc-700 hover:text-zinc-200 transition-all shrink-0"
-              title={`Sort: ${sortLabel}`}
+              title={`Ordenar: ${sortLabel}`}
             >
               <ArrowUpDown size={13} />
               <span className="hidden sm:inline">{sortLabel}</span>
@@ -314,7 +314,7 @@ function BookmarksPageInner() {
                 className={`p-1.5 rounded-lg transition-all ${
                   viewMode === 'grid' ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-600 hover:text-zinc-300'
                 }`}
-                aria-label="Masonry view"
+                aria-label="Visualização em grade"
               >
                 <LayoutGrid size={14} />
               </button>
@@ -323,7 +323,7 @@ function BookmarksPageInner() {
                 className={`p-1.5 rounded-lg transition-all ${
                   viewMode === 'list' ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-600 hover:text-zinc-300'
                 }`}
-                aria-label="List view"
+                aria-label="Visualização em lista"
               >
                 <List size={14} />
               </button>
@@ -336,7 +336,7 @@ function BookmarksPageInner() {
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               {filters.uncategorized && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-medium">
-                  Uncategorized
+                  Sem categoria
                   <button onClick={() => updateFilter('uncategorized', false)} className="text-amber-400 hover:text-amber-200 transition-colors"><X size={10} /></button>
                 </span>
               )}
@@ -359,7 +359,7 @@ function BookmarksPageInner() {
                 </span>
               )}
               <button onClick={clearAllFilters} className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors underline underline-offset-2">
-                Clear all
+                Limpar tudo
               </button>
             </div>
           )}
@@ -377,10 +377,10 @@ function BookmarksPageInner() {
                 <>
                   <span className="text-zinc-200 font-semibold">{total.toLocaleString()}</span>
                   {' '}bookmark{total !== 1 ? 's' : ''}
-                  {filters.q && <span className="text-zinc-600"> for "{filters.q}"</span>}
+                  {filters.q && <span className="text-zinc-600"> para "{filters.q}"</span>}
                 </>
               ) : (
-                'No bookmarks found'
+                'Nenhum bookmark encontrado'
               )}
             </p>
           </div>
@@ -399,9 +399,9 @@ function BookmarksPageInner() {
             <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-5">
               <BookmarkX size={26} className="text-zinc-700" />
             </div>
-            <h3 className="text-base font-semibold text-zinc-400 mb-2">No bookmarks match your filters</h3>
+            <h3 className="text-base font-semibold text-zinc-400 mb-2">Nenhum bookmark corresponde aos seus filtros</h3>
             <p className="text-zinc-600 text-sm mb-6 max-w-xs">
-              Try adjusting your search or removing some filters.
+              Tente ajustar sua busca ou remover alguns filtros.
             </p>
             {hasActiveFilters && (
               <button
@@ -409,7 +409,7 @@ function BookmarksPageInner() {
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 rounded-xl transition-colors border border-zinc-800"
               >
                 <X size={13} />
-                Clear filters
+                Limpar filtros
               </button>
             )}
           </div>

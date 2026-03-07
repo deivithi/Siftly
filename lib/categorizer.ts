@@ -175,7 +175,7 @@ async function resolveAnthropicClient(overrideKey?: string): Promise<Anthropic> 
   }
 
   // Try CLI auth before env var — prevents .env placeholders from blocking CLI users
-  const cliClient = createCliAnthropicClient(baseURL)
+  const cliClient = await createCliAnthropicClient(baseURL)
   if (cliClient) return cliClient
 
   const envKey = process.env.ANTHROPIC_API_KEY

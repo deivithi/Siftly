@@ -23,9 +23,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (apiKey) {
       client = new Anthropic({ apiKey, ...(baseURL ? { baseURL } : {}) })
     } else {
-      const cliClient = createCliAnthropicClient(baseURL)
+      const cliClient = await createCliAnthropicClient(baseURL)
       if (!cliClient) {
-        const cliStatus = getCliAuthStatus()
+        const cliStatus = await getCliAuthStatus()
         if (cliStatus.available && cliStatus.expired) {
           return NextResponse.json({ working: false, error: 'Claude CLI session expired — run `claude` to refresh' })
         }

@@ -31,17 +31,17 @@ function Pagination({ page, total, limit, onChange }: {
         className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
         <ChevronLeft size={16} />
-        Previous
+        Anterior
       </button>
       <span className="text-sm text-zinc-500">
-        Page {page} of {totalPages}
+        Página {page} de {totalPages}
       </span>
       <button
         onClick={() => onChange(page + 1)}
         disabled={page >= totalPages}
         className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
-        Next
+        Próxima
         <ChevronRight size={16} />
       </button>
     </div>
@@ -115,7 +115,7 @@ export default function CategoryPage() {
         className="flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors mb-6"
       >
         <ArrowLeft size={14} />
-        All Categories
+        Todas as Categorias
       </button>
 
       {category && (
@@ -138,7 +138,7 @@ export default function CategoryPage() {
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors shrink-0"
           >
             <Download size={15} />
-            Export ZIP
+            Exportar ZIP
           </button>
         </div>
       )}
@@ -153,7 +153,7 @@ export default function CategoryPage() {
 
       {!loading && bookmarks.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <p className="text-xl font-semibold text-zinc-400">No bookmarks in this category</p>
+          <p className="text-xl font-semibold text-zinc-400">Nenhum bookmark nesta categoria</p>
         </div>
       )}
 

@@ -28,11 +28,11 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/ai-search', label: 'AI Search', icon: Sparkles },
-  { href: '/bookmarks', label: 'Browse', icon: Search },
-  { href: '/mindmap', label: 'Mindmap', icon: GitBranch },
-  { href: '/import', label: 'Import', icon: Upload },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/ai-search', label: 'Busca com IA', icon: Sparkles },
+  { href: '/bookmarks', label: 'Explorar', icon: Search },
+  { href: '/mindmap', label: 'Mapa mental', icon: GitBranch },
+  { href: '/import', label: 'Importar', icon: Upload },
+  { href: '/settings', label: 'Configurações', icon: Settings },
 ]
 
 const DONATION_ADDRESS = '0xcF10B967a9e422753812004Cd59990f62E360760'
@@ -58,21 +58,21 @@ function SupportFooter() {
         className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-all group mb-1"
       >
         <span className="text-[13px]">𝕏</span>
-        <span className="text-[11px] font-medium">Built by @viperr</span>
+        <span className="text-[11px] font-medium">Criado por @viperr</span>
       </a>
 
       {/* Donate card */}
       <div className="rounded-xl bg-zinc-800/40 border border-zinc-700/30 p-3">
         <div className="flex items-center gap-1.5 mb-2">
           <Coffee size={12} className="text-amber-400 shrink-0" />
-          <span className="text-[11px] font-semibold text-zinc-300">Support Siftly</span>
+          <span className="text-[11px] font-semibold text-zinc-300">Apoiar o Siftly</span>
         </div>
         <p className="text-[10px] text-zinc-600 mb-2 leading-relaxed">
-          If Siftly saves you time, consider leaving a tip ☕
+          Se o Siftly economiza seu tempo, considere deixar uma gorjeta ☕
         </p>
         <button
           onClick={copyAddress}
-          title="Copy ETH address"
+          title="Copiar endereço ETH"
           className="w-full flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg bg-zinc-900/80 border border-zinc-700/40 hover:border-amber-500/40 hover:bg-zinc-900 transition-all group"
         >
           <span className="text-[9.5px] font-mono text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
@@ -108,11 +108,11 @@ interface PipelineStatus {
 }
 
 const PIPELINE_STAGE_LABELS: Record<string, string> = {
-  vision: 'Analyzing images',
-  entities: 'Extracting entities',
-  enrichment: 'Generating tags',
-  categorize: 'Categorizing',
-  parallel: 'Processing in parallel',
+  vision: 'Analisando imagens',
+  entities: 'Extraindo entidades',
+  enrichment: 'Gerando tags',
+  categorize: 'Categorizando',
+  parallel: 'Processando em paralelo',
 }
 
 export default function Nav() {
@@ -202,7 +202,7 @@ export default function Nav() {
             <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
           </span>
           <span className="text-[11px] font-medium text-indigo-300 truncate">
-            {pipeline.stage ? (PIPELINE_STAGE_LABELS[pipeline.stage] ?? pipeline.stage) : 'AI pipeline'}
+            {pipeline.stage ? (PIPELINE_STAGE_LABELS[pipeline.stage] ?? pipeline.stage) : 'Pipeline de IA'}
             {pipeline.stage === 'categorize' && pipeline.total > 0
               ? ` ${pipeline.done}/${pipeline.total}`
               : '…'}
@@ -217,7 +217,7 @@ export default function Nav() {
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800/50 border border-zinc-700/40 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 hover:border-zinc-600/60 transition-all text-xs"
         >
           <Search size={12} className="shrink-0" />
-          <span className="flex-1 text-left">Search…</span>
+          <span className="flex-1 text-left">Buscar…</span>
           <kbd className="flex items-center gap-0.5 text-[10px] text-zinc-600 font-mono">
             <Command size={9} />K
           </kbd>
@@ -256,14 +256,14 @@ export default function Nav() {
             className="flex items-center justify-between px-2 mb-2 w-full group"
           >
             <p className="text-[10px] text-zinc-600 uppercase tracking-widest font-semibold">
-              Collections
+              Coleções
             </p>
             <div className="flex items-center gap-1.5">
               <Link
                 href="/categories"
                 onClick={(e) => e.stopPropagation()}
                 className="text-zinc-700 hover:text-zinc-400 transition-colors p-0.5 rounded"
-                title="Manage categories"
+                title="Gerenciar categorias"
               >
                 <Tag size={11} />
               </Link>
@@ -312,7 +312,7 @@ export default function Nav() {
                     size={10}
                     className={`transition-transform ${showAllCats ? 'rotate-90' : ''}`}
                   />
-                  {showAllCats ? 'Show less' : `${categories.length - 8} more`}
+                  {showAllCats ? 'Ver menos' : `mais ${categories.length - 8}`}
                 </button>
               )}
             </>

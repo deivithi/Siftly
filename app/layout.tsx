@@ -12,7 +12,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'Siftly',
-  description: 'Your Twitter bookmarks, organized and searchable.',
+  description: 'Seus bookmarks do Twitter, organizados e pesquisáveis.',
 }
 
 export default function RootLayout({
@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html lang="pt-BR" className={inter.variable} suppressHydrationWarning>
       {/* Anti-flash: apply stored theme before React hydrates */}
       <head>
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='light')document.documentElement.classList.add('light');}catch(e){}})()` }} />

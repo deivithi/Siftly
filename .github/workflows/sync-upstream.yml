@@ -1,0 +1,79 @@
+name: Sync upstream + redeploy
+
+on:
+  schedule:
+    # Verifica atualizações todo dia às 08:00 UTC (05:00 horário de Brasília)
+    - cron: '0 8 * * *'
+  workflow_dispatch: # permite execução manual
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/viperrcrypto/Siftly.git
+          git fetch upstream
+
+      - name: Check for upstream changes
+        id: check
+        run: |
+          UPSTREAM_SHA=$(git rev-parse upstream/main)
+          MERGE_BASE=$(git merge-base HEAD upstream/main)
+          if [ "$UPSTREAM_SHA" = "$MERGE_BASE" ]; then
+            echo "no_changes=true" >> $GITHUB_OUTPUT
+            echo "Sem novas atualizações no upstream."
+          else
+            echo "no_changes=false" >> $GITHUB_OUTPUT
+            echo "Novas atualizações encontradas!"
+          fi
+
+      - name: Merge upstream into our fork
+        if: steps.check.outputs.no_changes == 'false'
+        run: |
+          git merge upstream/main \
+            --no-edit \
+            --strategy-option=ours \
+            -m "chore: sync upstream viperrcrypto/Siftly" \
+            || (echo "Conflito de merge detectado. Abortando." && git merge --abort && exit 1)
+
+      - name: Push changes
+        if: steps.check.outputs.no_changes == 'false'
+        run: git push origin main
+
+      - name: Trigger Vercel redeploy
+        if: steps.check.outputs.no_changes == 'false'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+        run: |
+          curl -s -X POST \
+            "https://api.vercel.com/v13/deployments" \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "siftly",
+              "gitSource": {
+                "type": "github",
+                "repoId": "${{ github.repository_id }}",
+                "ref": "main"
+              },
+              "projectId": "'"$VERCEL_PROJECT_ID"'",
+              "teamId": "'"$VERCEL_TEAM_ID"'",
+              "target": "production"
+            }' | python3 -c "import sys,json; d=json.load(sys.stdin); print('Deploy:', d.get('url', d.get('error','?')))"

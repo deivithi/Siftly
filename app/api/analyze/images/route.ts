@@ -25,7 +25,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const baseURL = process.env.ANTHROPIC_BASE_URL
   // CLI auth is tried before env var so .env placeholders don't block CLI users
-  const cliClient = createCliAnthropicClient(baseURL)
+  const cliClient = await createCliAnthropicClient(baseURL)
   const envKey = process.env.ANTHROPIC_API_KEY || ''
   const client: Anthropic = cliClient
     ?? (envKey ? new Anthropic({ apiKey: envKey, ...(baseURL ? { baseURL } : {}) }) : new Anthropic({ apiKey: '', ...(baseURL ? { baseURL } : {}) }))

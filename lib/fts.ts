@@ -2,15 +2,22 @@
  * SQLite FTS5 virtual table for fast full-text search across bookmarks.
  * FTS5 uses Porter stemming and tokenization — much faster than LIKE '%keyword%' table scans.
  *
- * The table is rebuilt after enrichment runs. At search time it provides ranked ID lists
- * that replace the LIKE-based keyword conditions in the search route.
+ * On PostgreSQL (Vercel/Neon), FTS5 is not available. All functions return gracefully,
+ * and callers fall back to LIKE-based queries automatically.
  */
 
 import prisma from '@/lib/db'
 
 const FTS_TABLE = 'bookmark_fts'
 
+/** Returns true when running against a local SQLite database. */
+function isSQLite(): boolean {
+  const url = process.env.DATABASE_URL ?? ''
+  return url.startsWith('file:') || url === ''
+}
+
 export async function ensureFtsTable(): Promise<void> {
+  if (!isSQLite()) return
   await prisma.$executeRawUnsafe(`
     CREATE VIRTUAL TABLE IF NOT EXISTS ${FTS_TABLE} USING fts5(
       bookmark_id UNINDEXED,
@@ -26,8 +33,10 @@ export async function ensureFtsTable(): Promise<void> {
 /**
  * Rebuild the FTS5 table from all bookmarks. Fast (local SQLite) and idempotent.
  * Call after import or enrichment runs.
+ * No-op on PostgreSQL.
  */
 export async function rebuildFts(): Promise<void> {
+  if (!isSQLite()) return
   await ensureFtsTable()
   await prisma.$executeRawUnsafe(`DELETE FROM ${FTS_TABLE}`)
 
@@ -65,10 +74,11 @@ export async function rebuildFts(): Promise<void> {
 /**
  * Search FTS5 table for bookmarks matching the given keywords.
  * Returns bookmark IDs ordered by relevance rank.
- * Returns [] on error (caller should fall back to LIKE queries).
+ * Returns [] on error or on PostgreSQL (caller falls back to LIKE queries).
  */
 export async function ftsSearch(keywords: string[]): Promise<string[]> {
   if (keywords.length === 0) return []
+  if (!isSQLite()) return []
 
   try {
     await ensureFtsTable()

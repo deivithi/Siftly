@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../app/generated/prisma"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
+  schemas  = ["siftly"]
 }
 
 model Bookmark {
@@ -26,6 +28,7 @@ model Bookmark {
   @@index([authorHandle])
   @@index([tweetCreatedAt])
   @@index([enrichedAt])
+  @@schema("siftly")
 }
 
 model Category {
@@ -37,6 +40,8 @@ model Category {
   isAiGenerated Boolean @default(false)
   createdAt   DateTime @default(now())
   bookmarks   BookmarkCategory[]
+
+  @@schema("siftly")
 }
 
 model BookmarkCategory {
@@ -47,6 +52,7 @@ model BookmarkCategory {
   category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@id([bookmarkId, categoryId])
+  @@schema("siftly")
 }
 
 model MediaItem {
@@ -61,6 +67,7 @@ model MediaItem {
 
   @@index([bookmarkId])
   @@index([url])
+  @@schema("siftly")
 }
 
 model ImportJob {
@@ -72,9 +79,13 @@ model ImportJob {
   errorMessage   String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@schema("siftly")
 }
 
 model Setting {
   key   String @id
   value String
+
+  @@schema("siftly")
 }

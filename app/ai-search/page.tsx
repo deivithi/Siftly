@@ -12,11 +12,11 @@ interface AIBookmark extends BookmarkWithMedia {
 }
 
 const EXAMPLES = [
-  'funny meme about AI replacing developers',
-  'Solana DeFi tools I should try',
-  'something about productivity and focus',
-  'crypto market crash meme',
-  'cool developer tools for building faster',
+  'meme engraçado sobre IA substituindo desenvolvedores',
+  'ferramentas Solana DeFi que devo experimentar',
+  'algo sobre produtividade e foco',
+  'meme sobre crash do mercado cripto',
+  'ferramentas legais para desenvolvedores construírem mais rápido',
 ]
 
 interface ImageStats {
@@ -127,13 +127,13 @@ export default function AISearchPage() {
       {/* Header */}
       <div className="mb-6 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-medium mb-4">
-          <Sparkles size={12} /> AI-Powered Search
+          <Sparkles size={12} /> Busca com IA
         </div>
         <h1 className="text-3xl font-bold text-zinc-100 mb-2">
-          Find anything in your bookmarks
+          Encontre qualquer coisa nos seus bookmarks
         </h1>
         <p className="text-zinc-500 text-sm">
-          Describe what you&apos;re looking for below.
+          Descreva o que você está procurando abaixo.
         </p>
       </div>
 
@@ -144,7 +144,7 @@ export default function AISearchPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={`e.g. "that funny meme about devs crying over AI" or "Solana tools for tracking wallets"`}
+          placeholder={`ex.: "aquele meme engraçado sobre devs chorando por causa da IA" ou "ferramentas Solana para rastrear carteiras"`}
           rows={3}
           className="w-full px-4 py-4 pr-36 rounded-2xl bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder:text-zinc-600 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all resize-none"
         />
@@ -158,10 +158,10 @@ export default function AISearchPage() {
           ) : (
             <Sparkles size={14} />
           )}
-          {loading ? 'Searching\u2026' : 'Search'}
+          {loading ? 'Buscando\u2026' : 'Buscar'}
         </button>
       </div>
-      <p className="text-xs text-zinc-600 mb-8 text-right">⌘+Enter to search</p>
+      <p className="text-xs text-zinc-600 mb-8 text-right">⌘+Enter para buscar</p>
 
       {/* Image analysis status — hidden while main pipeline is running (it handles vision internally) */}
       {imageStats !== null && !pipelineRunning && (
@@ -170,13 +170,13 @@ export default function AISearchPage() {
           <div className="flex-1 min-w-0">
             {imageStats.remaining === 0 ? (
               <span className="text-zinc-400">
-                <span className="text-emerald-400 font-medium">{imageStats.tagged}</span> images analyzed for visual search
+                <span className="text-emerald-400 font-medium">{imageStats.tagged}</span> imagens analisadas para busca visual
               </span>
             ) : (
               <span className="text-zinc-400">
-                <span className="text-indigo-400 font-medium">{imageStats.tagged}</span> of{' '}
-                <span className="font-medium">{imageStats.total}</span> images analyzed —{' '}
-                <span className="text-zinc-500">{imageStats.remaining} remaining</span>
+                <span className="text-indigo-400 font-medium">{imageStats.tagged}</span> de{' '}
+                <span className="font-medium">{imageStats.total}</span> imagens analisadas —{' '}
+                <span className="text-zinc-500">{imageStats.remaining} restantes</span>
               </span>
             )}
           </div>
@@ -187,7 +187,7 @@ export default function AISearchPage() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium transition-colors shrink-0"
             >
               {analyzing ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
-              {analyzing ? 'Analyzing…' : 'Analyze images'}
+              {analyzing ? 'Analisando…' : 'Analisar imagens'}
             </button>
           )}
         </div>
@@ -196,7 +196,7 @@ export default function AISearchPage() {
       {/* Example queries — shown only before first search */}
       {!searched && (
         <div className="mb-8">
-          <p className="text-xs text-zinc-600 mb-3 uppercase tracking-wider">Try these</p>
+          <p className="text-xs text-zinc-600 mb-3 uppercase tracking-wider">Experimente esses</p>
           <div className="flex flex-wrap gap-2">
             {EXAMPLES.map((ex) => (
               <button
@@ -222,7 +222,7 @@ export default function AISearchPage() {
       {searched && !loading && results.length === 0 && !error && (
         <div className="text-center py-16 text-zinc-600">
           <BookMarked size={36} className="mx-auto mb-3 opacity-30" />
-          <p>No bookmarks matched that description. Try different words.</p>
+          <p>Nenhum bookmark correspondeu a essa descrição. Tente palavras diferentes.</p>
         </div>
       )}
 
@@ -232,7 +232,7 @@ export default function AISearchPage() {
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-zinc-400">{explanation}</p>
             <span className="text-xs text-zinc-600">
-              {results.length} result{results.length !== 1 ? 's' : ''}
+              {results.length} resultado{results.length !== 1 ? 's' : ''}
             </span>
           </div>
           <div className="flex flex-col gap-6">

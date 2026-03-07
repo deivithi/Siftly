@@ -230,7 +230,7 @@ function MediaOverlay({ label, icon }: { label?: string; icon?: React.ReactNode 
     <div className="absolute inset-0 flex items-center justify-center bg-black/40 hover:bg-black/50 transition-colors">
       {icon ?? (
         <span className="px-3 py-1.5 rounded-full bg-black/60 text-white text-xs font-semibold backdrop-blur-sm">
-          {label ?? 'Watch on X ↗'}
+          {label ?? 'Ver no X ↗'}
         </span>
       )}
     </div>
@@ -275,7 +275,7 @@ function TopMediaSlot({ item, tweetUrl }: TopMediaSlotProps) {
           <div className="h-48 flex flex-col items-center justify-center gap-2 bg-zinc-800/50 hover:bg-zinc-800/70 transition-colors">
             <ImageOff size={18} className="text-zinc-600" />
             <span className="px-3 py-1.5 rounded-full bg-zinc-700 text-zinc-400 text-xs font-semibold">
-              View on X ↗
+              Ver no X ↗
             </span>
           </div>
         </a>
@@ -314,7 +314,7 @@ function TopMediaSlot({ item, tweetUrl }: TopMediaSlotProps) {
           <MediaOverlay />
         </div>
       ) : (
-        <MediaPlaceholder label="Watch on X ↗" isVideo={item.type === 'video'} />
+        <MediaPlaceholder label="Ver no X ↗" isVideo={item.type === 'video'} />
       )}
     </a>
   )
@@ -351,7 +351,7 @@ function CategoryChip({
             onRemove(category.id)
           }}
           className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity"
-          aria-label={`Remove ${category.name}`}
+          aria-label={`Remover ${category.name}`}
         >
           <X size={10} />
         </button>
@@ -439,12 +439,12 @@ function CategoryEditor({ bookmarkId, currentCategoryIds, onSave, onClose }: Cat
       className="absolute left-0 right-0 top-full mt-2 z-50 bg-zinc-900 border border-zinc-700 rounded-xl p-3 shadow-2xl shadow-black/50"
       onClick={(e) => e.stopPropagation()}
     >
-      <p className="text-xs font-semibold text-zinc-500 mb-2 uppercase tracking-wide">Edit categories</p>
+      <p className="text-xs font-semibold text-zinc-500 mb-2 uppercase tracking-wide">Editar categorias</p>
 
-      {loading && <p className="text-xs text-zinc-600 py-2">Loading…</p>}
+      {loading && <p className="text-xs text-zinc-600 py-2">Carregando…</p>}
 
       {!loading && allCategories.length === 0 && (
-        <p className="text-xs text-zinc-600 py-2">No categories found.</p>
+        <p className="text-xs text-zinc-600 py-2">Nenhuma categoria encontrada.</p>
       )}
 
       {!loading && allCategories.length > 0 && (
@@ -477,14 +477,14 @@ function CategoryEditor({ bookmarkId, currentCategoryIds, onSave, onClose }: Cat
 
       <div className="flex items-center justify-end gap-2 mt-3 pt-2 border-t border-zinc-800">
         <button onClick={onClose} className="px-2.5 py-1 text-xs rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors">
-          Cancel
+          Cancelar
         </button>
         <button
           onClick={handleSave}
           disabled={saving}
           className="px-3 py-1 text-xs rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-colors"
         >
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? 'Salvando…' : 'Salvar'}
         </button>
       </div>
     </div>
@@ -596,7 +596,7 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
               <button
                 onClick={handleDownload}
                 className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
-                title="Download media"
+                title="Baixar mídia"
               >
                 <Download size={13} />
               </button>
@@ -606,7 +606,7 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
               target="_blank"
               rel="noopener noreferrer"
               className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
-              title="Open on X"
+              title="Abrir no X"
             >
               <ExternalLink size={13} />
             </a>
@@ -625,7 +625,7 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
                     onClick={() => setExpanded(true)}
                     className="text-indigo-400 hover:text-indigo-300 transition-colors"
                   >
-                    more
+                    ver mais
                   </button>
                 </span>
               )}
@@ -636,14 +636,14 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
                     onClick={() => setExpanded(false)}
                     className="text-zinc-500 hover:text-zinc-400 transition-colors text-xs"
                   >
-                    less
+                    ver menos
                   </button>
                 </span>
               )}
             </p>
           )}
           {!displayText && !firstMedia && !previewUrl && (
-            <p className="text-xs text-zinc-700 italic">No text content</p>
+            <p className="text-xs text-zinc-700 italic">Sem conteúdo de texto</p>
           )}
           {previewUrl && (
             <LinkPreview url={previewUrl} tweetUrl={tweetUrl} />
@@ -658,7 +658,7 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
               <CategoryChip key={cat.id} category={cat} onRemove={handleRemoveCategory} />
             ))}
             {categories.length === 0 && (
-              <span className="text-xs text-zinc-700 italic">Uncategorized</span>
+              <span className="text-xs text-zinc-700 italic">Sem categoria</span>
             )}
             {isKnownAuthor && dateStr && (
               <span className="ml-auto text-xs text-zinc-600 flex-shrink-0">
@@ -672,10 +672,10 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
             <button
               onClick={() => setEditingCategories((v) => !v)}
               className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs text-zinc-700 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent hover:border-zinc-700 transition-all"
-              title="Edit categories"
+              title="Editar categorias"
             >
               <Pencil size={10} />
-              edit
+              editar
             </button>
           </div>
 

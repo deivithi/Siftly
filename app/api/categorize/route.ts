@@ -155,7 +155,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       // CLI auth is tried before env var so .env placeholders don't block CLI users
       const resolvedClient = dbApiKey
         ? new Anthropic({ apiKey: dbApiKey, ...(baseURL ? { baseURL } : {}) })
-        : (createCliAnthropicClient(baseURL) ?? (anthropicApiKey ? new Anthropic({ apiKey: anthropicApiKey, ...(baseURL ? { baseURL } : {}) }) : null))
+        : ((await createCliAnthropicClient(baseURL)) ?? (anthropicApiKey ? new Anthropic({ apiKey: anthropicApiKey, ...(baseURL ? { baseURL } : {}) }) : null))
 
       if (!resolvedClient) {
         setState({ lastError: 'No Anthropic API key configured. Go to Settings to add one, or log in with Claude CLI.' })
