@@ -20,6 +20,9 @@ import {
   Terminal,
   Loader2,
   X,
+  RefreshCw,
+  Twitter,
+  Unlink,
 } from 'lucide-react'
 
 const ANTHROPIC_MODELS = [
@@ -535,6 +538,218 @@ function DataSection() {
   )
 }
 
+interface TwitterStatus {
+  connected: boolean
+  hasToken: boolean
+  hasCt0: boolean
+  maskedToken: string | null
+  lastSync: string | null
+}
+
+function TwitterSection({ onToast }: { onToast: (t: Toast) => void }) {
+  const [status, setStatus] = useState<TwitterStatus | null>(null)
+  const [authToken, setAuthToken] = useState('')
+  const [ct0, setCt0] = useState('')
+  const [showToken, setShowToken] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
+
+  function loadStatus() {
+    fetch('/api/settings/twitter')
+      .then((r) => r.json())
+      .then((d: TwitterStatus) => setStatus(d))
+      .catch(() => setStatus({ connected: false, hasToken: false, hasCt0: false, maskedToken: null, lastSync: null }))
+  }
+
+  useEffect(() => { loadStatus() }, [])
+
+  async function handleConnect() {
+    if (!authToken.trim() || !ct0.trim()) {
+      onToast({ type: 'error', message: 'Preencha auth_token e ct0' })
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch('/api/settings/twitter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ authToken: authToken.trim(), ct0: ct0.trim() }),
+      })
+      if (!res.ok) {
+        const d = await res.json() as { error?: string }
+        throw new Error(d.error ?? 'Falha ao conectar')
+      }
+      setAuthToken('')
+      setCt0('')
+      loadStatus()
+      onToast({ type: 'success', message: 'X conectado com sucesso!' })
+    } catch (err) {
+      onToast({ type: 'error', message: err instanceof Error ? err.message : 'Falha ao salvar' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleSync() {
+    setSyncing(true)
+    try {
+      const res = await fetch('/api/sync/twitter', { method: 'POST' })
+      const d = await res.json() as { imported?: number; skipped?: number; error?: string }
+      if (!res.ok) throw new Error(d.error ?? 'Falha ao sincronizar')
+      loadStatus()
+      onToast({
+        type: 'success',
+        message: `Sincronizado! ${d.imported ?? 0} novos bookmarks${d.skipped ? `, ${d.skipped} ignorados` : ''}.`,
+      })
+    } catch (err) {
+      onToast({ type: 'error', message: err instanceof Error ? err.message : 'Erro ao sincronizar' })
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  async function handleDisconnect() {
+    setDisconnecting(true)
+    try {
+      await fetch('/api/settings/twitter', { method: 'DELETE' })
+      loadStatus()
+      onToast({ type: 'success', message: 'X desconectado' })
+    } catch {
+      onToast({ type: 'error', message: 'Falha ao desconectar' })
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  function formatLastSync(iso: string) {
+    const d = new Date(iso)
+    return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+  }
+
+  return (
+    <Section
+      icon={Twitter}
+      title="X / Twitter — Sincronização Automática"
+      description="Conecte sua conta X para importar todos os bookmarks e sincronizar automaticamente todo dia."
+    >
+      {/* Status banner */}
+      {status?.connected ? (
+        <div className="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 mb-5">
+          <Check size={15} className="text-emerald-400 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-emerald-300">Conectado ao X</p>
+            <p className="text-xs text-zinc-500 mt-0.5 font-mono truncate">
+              Token: {status.maskedToken}
+              {status.lastSync && (
+                <span className="ml-2 not-italic">· Última sync: {formatLastSync(status.lastSync)}</span>
+              )}
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={() => void handleSync()}
+              disabled={syncing}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
+              {syncing ? 'Sincronizando…' : 'Sincronizar agora'}
+            </button>
+            <button
+              onClick={() => void handleDisconnect()}
+              disabled={disconnecting}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-colors disabled:opacity-50"
+            >
+              <Unlink size={12} />
+              {disconnecting ? 'Desconectando…' : 'Desconectar'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-3 p-3.5 rounded-xl bg-zinc-800/60 border border-zinc-700 mb-5">
+          <AlertCircle size={15} className="text-zinc-400 shrink-0 mt-0.5" />
+          <p className="text-sm text-zinc-400">
+            Não conectado. Siga as instruções abaixo para conectar sua conta X.
+          </p>
+        </div>
+      )}
+
+      {/* How to get credentials */}
+      <details className="mb-5 group">
+        <summary className="flex items-center gap-2 cursor-pointer text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors select-none list-none">
+          <ChevronDown size={13} className="transition-transform group-open:rotate-180" />
+          Como obter auth_token e ct0 (30 segundos)
+        </summary>
+        <ol className="mt-3 space-y-2 pl-4 border-l border-zinc-700">
+          {[
+            'Abra x.com no Chrome e faça login.',
+            'Pressione F12 → aba "Aplicativos" (ou "Application").',
+            'No menu esquerdo: Armazenamento → Cookies → https://x.com.',
+            'Encontre a linha "auth_token" → copie o valor da coluna "Valor".',
+            'Encontre a linha "ct0" → copie o valor.',
+            'Cole os dois campos abaixo e clique em "Conectar".',
+          ].map((step, i) => (
+            <li key={i} className="flex gap-2 text-xs text-zinc-500">
+              <span className="shrink-0 font-bold text-zinc-600">{i + 1}.</span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
+      </details>
+
+      {/* Input fields */}
+      <div className="space-y-3">
+        <div>
+          <label className="block text-xs font-medium text-zinc-400 mb-1.5">
+            auth_token <span className="text-zinc-600 font-normal">(cookie HttpOnly — obtido via DevTools)</span>
+          </label>
+          <div className="relative">
+            <input
+              type={showToken ? 'text' : 'password'}
+              value={authToken}
+              onChange={(e) => setAuthToken(e.target.value)}
+              placeholder={status?.connected ? 'Insira novo token para substituir…' : 'Cole aqui o valor do cookie auth_token'}
+              className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-100 placeholder:text-zinc-600 text-sm font-mono focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all"
+            />
+            <button
+              type="button"
+              onClick={() => setShowToken((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              {showToken ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-zinc-400 mb-1.5">
+            ct0 <span className="text-zinc-600 font-normal">(cookie CSRF — auto-atualizado pelo bookmarklet)</span>
+          </label>
+          <input
+            type="password"
+            value={ct0}
+            onChange={(e) => setCt0(e.target.value)}
+            placeholder="Cole aqui o valor do cookie ct0"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-100 placeholder:text-zinc-600 text-sm font-mono focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all"
+          />
+        </div>
+
+        <button
+          onClick={() => void handleConnect()}
+          disabled={saving || (!authToken.trim() && !ct0.trim())}
+          className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
+        >
+          {saving ? 'Conectando…' : status?.connected ? 'Atualizar credenciais' : 'Conectar ao X'}
+        </button>
+      </div>
+
+      <p className="text-xs text-zinc-600 mt-3">
+        Sync automático: todo dia às 05:00 (horário de Brasília) via Vercel Cron. Seus tokens ficam armazenados apenas neste banco de dados privado.
+      </p>
+    </Section>
+  )
+}
+
 function DangerZoneSection({ onToast }: { onToast: (t: Toast) => void }) {
   const [confirming, setConfirming] = useState(false)
   const [clearing, setClearing] = useState(false)
@@ -713,6 +928,7 @@ export default function SettingsPage() {
 
       <div className="space-y-4">
         <ApiKeySection onToast={showToast} />
+        <TwitterSection onToast={showToast} />
         <DataSection />
         <DangerZoneSection onToast={showToast} />
         <AboutSection />
