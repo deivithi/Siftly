@@ -26,7 +26,14 @@ const FEATURES = JSON.stringify({
 
 // Query ID for X's internal Bookmarks GraphQL endpoint.
 // Update this value if you start getting 400 errors after an X deploy.
-export let QUERY_ID = 'j5KExFXy1niL_uGnBhHNxA'
+export const QUERY_ID = 'j5KExFXy1niL_uGnBhHNxA'
+
+export interface XCredentials {
+  authToken: string
+  ct0: string
+  twid?: string      // u%3D{userId} — ties session to user, critical for server-side auth
+  guestId?: string   // guest_id — secondary session cookie
+}
 
 interface MediaVariant {
   content_type?: string
@@ -58,7 +65,17 @@ export interface TweetResult {
   core?: { user_results?: { result?: { legacy?: UserLegacy } } }
 }
 
-export async function fetchPage(authToken: string, ct0: string, cursor?: string) {
+function buildCookieHeader(creds: XCredentials): string {
+  const parts = [
+    `auth_token=${creds.authToken}`,
+    `ct0=${creds.ct0}`,
+  ]
+  if (creds.twid) parts.push(`twid=${creds.twid}`)
+  if (creds.guestId) parts.push(`guest_id=${creds.guestId}`)
+  return parts.join('; ')
+}
+
+export async function fetchPage(creds: XCredentials, cursor?: string) {
   const variables = JSON.stringify({
     count: 100,
     includePromotedContent: false,
@@ -69,22 +86,36 @@ export async function fetchPage(authToken: string, ct0: string, cursor?: string)
 
   const res = await fetch(url, {
     headers: {
+      // Auth
       Authorization: `Bearer ${BEARER}`,
-      'X-Csrf-Token': ct0,
-      Cookie: `auth_token=${authToken}; ct0=${ct0}`,
+      'X-Csrf-Token': creds.ct0,
+      Cookie: buildCookieHeader(creds),
+      // X-specific session headers
       'X-Twitter-Auth-Type': 'OAuth2Session',
       'X-Twitter-Active-User': 'yes',
-      'X-Twitter-Client-Language': 'pt',
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      Accept: '*/*',
-      'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
-      Referer: 'https://x.com/i/bookmarks',
+      'X-Twitter-Client-Language': 'en',
+      // Browser fingerprint headers — critical for X to accept server-side requests
+      'Origin': 'https://x.com',
+      'Referer': 'https://x.com/i/bookmarks',
+      'sec-fetch-site': 'same-origin',
+      'sec-fetch-mode': 'cors',
+      'sec-fetch-dest': 'empty',
+      'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+      'sec-ch-ua-mobile': '?0',
+      'sec-ch-ua-platform': '"macOS"',
+      // Standard browser headers
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Accept': '*/*',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'cache-control': 'no-cache',
+      'pragma': 'no-cache',
     },
   })
 
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`X API ${res.status}: ${text.slice(0, 300)}`)
+    throw new Error(`X API ${res.status}: ${text.slice(0, 400)}`)
   }
 
   return res.json()
@@ -143,18 +174,14 @@ export function extractMedia(tweet: TweetResult) {
 
 /**
  * Fetches all bookmarks from X and saves new ones to the database.
- * Returns the count of imported and skipped bookmarks.
  */
-export async function syncBookmarks(
-  authToken: string,
-  ct0: string
-): Promise<{ imported: number; skipped: number }> {
+export async function syncBookmarks(creds: XCredentials): Promise<{ imported: number; skipped: number }> {
   let imported = 0
   let skipped = 0
   let cursor: string | undefined
 
   while (true) {
-    const data = await fetchPage(authToken.trim(), ct0.trim(), cursor)
+    const data = await fetchPage(creds, cursor)
     const { tweets, nextCursor } = parsePage(data)
 
     for (const tweet of tweets) {
@@ -208,14 +235,36 @@ export async function syncBookmarks(
 }
 
 /**
- * Reads stored X session credentials from the database.
+ * Reads all stored X credentials from the database.
  */
-export async function getStoredCredentials(): Promise<{ authToken: string; ct0: string } | null> {
-  const [tokenRow, ct0Row] = await Promise.all([
-    prisma.setting.findUnique({ where: { key: 'twitterAuthToken' } }),
-    prisma.setting.findUnique({ where: { key: 'twitterCt0' } }),
-  ])
+export async function getStoredCredentials(): Promise<XCredentials | null> {
+  const rows = await prisma.setting.findMany({
+    where: { key: { in: ['twitterAuthToken', 'twitterCt0', 'twitterTwid', 'twitterGuestId'] } },
+  })
+  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]))
 
-  if (!tokenRow?.value || !ct0Row?.value) return null
-  return { authToken: tokenRow.value, ct0: ct0Row.value }
+  if (!map.twitterAuthToken || !map.twitterCt0) return null
+
+  return {
+    authToken: map.twitterAuthToken,
+    ct0: map.twitterCt0,
+    twid: map.twitterTwid,
+    guestId: map.twitterGuestId,
+  }
+}
+
+/**
+ * Validates credentials by attempting to fetch a single page of bookmarks.
+ * Returns null on success, error message on failure.
+ */
+export async function testCredentials(creds: XCredentials): Promise<string | null> {
+  try {
+    const data = await fetchPage(creds)
+    const { tweets } = parsePage(data)
+    // If we get here without error, auth is working
+    void tweets // suppress unused var warning
+    return null
+  } catch (err) {
+    return err instanceof Error ? err.message : 'Falha ao conectar'
+  }
 }

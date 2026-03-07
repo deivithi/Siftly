@@ -542,6 +542,7 @@ interface TwitterStatus {
   connected: boolean
   hasToken: boolean
   hasCt0: boolean
+  hasTwid?: boolean
   maskedToken: string | null
   lastSync: string | null
 }
@@ -552,6 +553,9 @@ function TwitterSection({ onToast }: { onToast: (t: Toast) => void }) {
   const [ct0, setCt0] = useState('')
   const [showToken, setShowToken] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<'idle' | 'ok' | 'fail'>('idle')
+  const [testError, setTestError] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
 
@@ -570,6 +574,7 @@ function TwitterSection({ onToast }: { onToast: (t: Toast) => void }) {
       return
     }
     setSaving(true)
+    setTestResult('idle')
     try {
       const res = await fetch('/api/settings/twitter', {
         method: 'POST',
@@ -583,11 +588,35 @@ function TwitterSection({ onToast }: { onToast: (t: Toast) => void }) {
       setAuthToken('')
       setCt0('')
       loadStatus()
-      onToast({ type: 'success', message: 'X conectado com sucesso!' })
+      // Auto-test after saving
+      void handleTest()
     } catch (err) {
       onToast({ type: 'error', message: err instanceof Error ? err.message : 'Falha ao salvar' })
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleTest() {
+    setTesting(true)
+    setTestResult('idle')
+    setTestError('')
+    try {
+      const res = await fetch('/api/settings/twitter/test', { method: 'POST' })
+      const d = await res.json() as { ok: boolean; error?: string }
+      if (d.ok) {
+        setTestResult('ok')
+        onToast({ type: 'success', message: 'X conectado com sucesso! Credenciais válidas.' })
+      } else {
+        setTestResult('fail')
+        setTestError(d.error ?? 'Credenciais inválidas')
+        onToast({ type: 'error', message: d.error ?? 'Credenciais inválidas — verifique auth_token e ct0' })
+      }
+    } catch {
+      setTestResult('fail')
+      setTestError('Erro de conexão')
+    } finally {
+      setTesting(false)
     }
   }
 
@@ -635,18 +664,41 @@ function TwitterSection({ onToast }: { onToast: (t: Toast) => void }) {
     >
       {/* Status banner */}
       {status?.connected ? (
-        <div className="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 mb-5">
-          <Check size={15} className="text-emerald-400 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-emerald-300">Conectado ao X</p>
-            <p className="text-xs text-zinc-500 mt-0.5 font-mono truncate">
-              Token: {status.maskedToken}
-              {status.lastSync && (
-                <span className="ml-2 not-italic">· Última sync: {formatLastSync(status.lastSync)}</span>
-              )}
-            </p>
+        <div className="flex flex-col gap-2 p-3.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 mb-5">
+          <div className="flex items-center gap-3">
+            <Check size={15} className="text-emerald-400 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-emerald-300">
+                Conectado ao X
+                {status.hasTwid && <span className="ml-2 text-xs text-emerald-500 font-normal">(+ twid ✓)</span>}
+              </p>
+              <p className="text-xs text-zinc-500 mt-0.5 font-mono truncate">
+                Token: {status.maskedToken}
+                {status.lastSync && (
+                  <span className="ml-2 not-italic">· Última sync: {formatLastSync(status.lastSync)}</span>
+                )}
+              </p>
+            </div>
           </div>
-          <div className="flex gap-2 shrink-0">
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => void handleTest()}
+              disabled={testing}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-300 bg-zinc-700/60 hover:bg-zinc-700 border border-zinc-600 transition-colors disabled:opacity-50"
+            >
+              {testing ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+              {testing ? 'Testando…' : 'Testar conexão'}
+            </button>
+            {testResult === 'ok' && (
+              <span className="flex items-center gap-1 text-xs text-emerald-400 px-2">
+                <Check size={11} /> Credenciais válidas
+              </span>
+            )}
+            {testResult === 'fail' && (
+              <span className="flex items-center gap-1 text-xs text-red-400 px-2" title={testError}>
+                <AlertCircle size={11} /> {testError.slice(0, 50) || 'Inválido'}
+              </span>
+            )}
             <button
               onClick={() => void handleSync()}
               disabled={syncing}

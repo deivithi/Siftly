@@ -1,33 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { syncBookmarks, getStoredCredentials } from '@/lib/twitter-session'
+import { syncBookmarks, getStoredCredentials, type XCredentials } from '@/lib/twitter-session'
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  // Try body first; fall back to DB-stored credentials
-  let authToken: string | undefined
-  let ct0: string | undefined
+  let creds: XCredentials | null = null
 
+  // Try body first (manual call with explicit credentials)
   try {
-    const body = await request.json() as { authToken?: string; ct0?: string }
-    authToken = body.authToken?.trim()
-    ct0 = body.ct0?.trim()
+    const body = await request.json() as { authToken?: string; ct0?: string; twid?: string; guestId?: string }
+    if (body.authToken?.trim() && body.ct0?.trim()) {
+      creds = {
+        authToken: body.authToken.trim(),
+        ct0: body.ct0.trim(),
+        twid: body.twid?.trim(),
+        guestId: body.guestId?.trim(),
+      }
+    }
   } catch {
     // empty body — will use stored credentials
   }
 
-  if (!authToken || !ct0) {
-    const stored = await getStoredCredentials()
-    if (!stored) {
-      return NextResponse.json(
-        { error: 'authToken e ct0 são obrigatórios (ou conecte sua conta X nas Configurações)' },
-        { status: 400 }
-      )
-    }
-    authToken = stored.authToken
-    ct0 = stored.ct0
+  // Fall back to DB-stored credentials
+  if (!creds) {
+    creds = await getStoredCredentials()
+  }
+
+  if (!creds) {
+    return NextResponse.json(
+      { error: 'Conecte sua conta X nas Configurações antes de sincronizar.' },
+      { status: 400 }
+    )
   }
 
   try {
-    const result = await syncBookmarks(authToken, ct0)
+    const result = await syncBookmarks(creds)
     return NextResponse.json(result)
   } catch (err) {
     return NextResponse.json(
