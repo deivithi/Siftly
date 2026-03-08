@@ -2,11 +2,11 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
-import { Upload, CheckCircle, ChevronRight, Loader2, Copy, Check, ExternalLink, Sparkles, Eye, Tag, Brain, Layers, StopCircle } from 'lucide-react'
+import { Upload, CheckCircle, ChevronRight, Loader2, Copy, Check, ExternalLink, Sparkles, Eye, Tag, Brain, Layers, StopCircle, RefreshCw, Clock, KeyRound, Trash2 } from 'lucide-react'
 import * as Progress from '@radix-ui/react-progress'
 
 type Step = 1 | 2 | 3
-type Method = 'bookmarklet' | 'console'
+type Method = 'bookmarklet' | 'console' | 'live'
 
 interface ImportResult {
   imported: number
@@ -65,10 +65,13 @@ const STAGE_INFO: Record<NonNullable<Stage>, { label: string; icon: React.ReactN
 
 const BOOKMARKLET_SCRIPT = `(async function(){
   if(!location.hostname.includes('twitter.com')&&!location.hostname.includes('x.com')){
-    showToast('\u274c Please navigate to x.com/i/bookmarks first','#ef4444');return;
+    showToast('\u274c Please navigate to x.com/i/bookmarks or x.com/username/likes first','#ef4444');return;
   }
+  var isLikes=location.pathname.includes('/likes');
+  var source=isLikes?'like':'bookmark';
+  var label=isLikes?'likes':'bookmarks';
   function showToast(msg,bg){
-    var t=document.createElement('div');t.innerHTML=msg;
+    var t=document.createElement('div');t.textContent=msg;
     Object.assign(t.style,{position:'fixed',bottom:'24px',left:'50%',transform:'translateX(-50%)',
       zIndex:'2147483647',padding:'10px 18px',background:bg||'#1e1b4b',color:'#fff',
       border:'1px solid rgba(255,255,255,0.15)',borderRadius:'8px',
@@ -79,7 +82,7 @@ const BOOKMARKLET_SCRIPT = `(async function(){
   }
   var all=[],seen=new Set();
   var btn=document.createElement('button');
-  btn.textContent='Scroll, then Export 0 bookmarks \u2192';
+  btn.textContent='Scroll, then Export 0 '+label+' \u2192';
   Object.assign(btn.style,{position:'fixed',top:'12px',right:'12px',zIndex:'2147483647',
     padding:'10px 18px',background:'#4f46e5',color:'#fff',border:'none',borderRadius:'8px',
     cursor:'pointer',fontSize:'14px',fontWeight:'700',
@@ -107,7 +110,7 @@ const BOOKMARKLET_SCRIPT = `(async function(){
       text:leg.full_text||leg.text||'',media:media,
       hashtags:(leg.entities&&leg.entities.hashtags||[]).map(function(h){return h.text;}),
       urls:(leg.entities&&leg.entities.urls||[]).map(function(u){return u.expanded_url;}).filter(Boolean)});
-    btn.textContent='Export '+all.length+' bookmarks \u2192';
+    btn.textContent='Export '+all.length+' '+label+' \u2192';
   }
   function processEntry(e){
     if(!e)return;
@@ -118,11 +121,15 @@ const BOOKMARKLET_SCRIPT = `(async function(){
     }
     if(e.content&&e.content.items)e.content.items.forEach(function(i){processEntry({content:i.item||i});});
   }
+  function findInstructions(obj,depth){
+    if(!obj||typeof obj!=='object'||depth>6)return null;
+    if(Array.isArray(obj))return null;
+    if(Array.isArray(obj.instructions))return obj.instructions;
+    for(var k in obj){if(Object.prototype.hasOwnProperty.call(obj,k)){var r=findInstructions(obj[k],depth+1);if(r)return r;}}
+    return null;
+  }
   function processData(d){
-    var instr=
-      (d&&d.data&&d.data.bookmark_timeline_v2&&d.data.bookmark_timeline_v2.timeline&&d.data.bookmark_timeline_v2.timeline.instructions)||
-      (d&&d.data&&d.data.bookmarks_timeline&&d.data.bookmarks_timeline.timeline&&d.data.bookmarks_timeline.timeline.instructions)||
-      (d&&d.data&&d.data.timeline_by_id&&d.data.timeline_by_id.timeline&&d.data.timeline_by_id.timeline.instructions)||[];
+    var instr=findInstructions(d,0)||[];
     instr.forEach(function(i){(i.entries||[]).forEach(processEntry);(i.moduleItems||[]).forEach(processEntry);});
   }
   var autoBtn=document.createElement('button');
@@ -130,13 +137,13 @@ const BOOKMARKLET_SCRIPT = `(async function(){
     window.fetch=origFetch;
     XMLHttpRequest.prototype.open=origOpen;
     XMLHttpRequest.prototype.send=origSend;
-    if(!all.length){showToast('\u26a0\ufe0f No bookmarks captured \u2014 scroll or use Auto-scroll first!','#92400e');return;}
+    if(!all.length){showToast('\u26a0\ufe0f No '+label+' captured \u2014 scroll or use Auto-scroll first!','#92400e');return;}
     [btn,autoBtn].forEach(function(el){try{document.body.removeChild(el);}catch(e){}});
-    var blob=new Blob([JSON.stringify({bookmarks:all},null,2)],{type:'application/json'});
+    var blob=new Blob([JSON.stringify({bookmarks:all,source:source},null,2)],{type:'application/json'});
     var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');a.href=url;a.download='bookmarks.json';a.click();
+    var a=document.createElement('a');a.href=url;a.download=source+'s.json';a.click();
     setTimeout(function(){URL.revokeObjectURL(url);},1000);
-    showToast('\u2705 Downloaded '+all.length+' bookmarks! Upload to Siftly.','#14532d');
+    showToast('\u2705 Downloaded '+all.length+' '+label+'! Upload to Siftly.','#14532d');
   }
   btn.onclick=doExport;
   autoBtn.textContent='\u25b6 Auto-scroll';
@@ -163,7 +170,7 @@ const BOOKMARKLET_SCRIPT = `(async function(){
             autoScrolling=false;
             autoBtn.textContent='\u2705 Done \u2014 '+all.length+' captured';
             autoBtn.style.background='#14532d';autoBtn.style.color='#86efac';autoBtn.style.border='1px solid #166534';
-            showToast('\u2705 Auto-scroll complete! '+all.length+' bookmarks ready. Click Export.','#14532d');
+            showToast('\u2705 Auto-scroll complete! '+all.length+' '+label+' ready. Click Export.','#14532d');
             return;
           }
           stagnant=0;
@@ -187,7 +194,7 @@ const BOOKMARKLET_SCRIPT = `(async function(){
     var r=await origFetch.apply(this,arguments);
     try{
       var u=arguments[0] instanceof Request?arguments[0].url:String(arguments[0]);
-      if(u.toLowerCase().includes('bookmark')){var d=await r.clone().json();processData(d);}
+      if(u.includes('/graphql/')){var d=await r.clone().json();processData(d);}
     }catch(ex){}
     return r;
   };
@@ -195,18 +202,21 @@ const BOOKMARKLET_SCRIPT = `(async function(){
   XMLHttpRequest.prototype.open=function(){xhrUrls.set(this,String(arguments[1]||''));return origOpen.apply(this,arguments);};
   XMLHttpRequest.prototype.send=function(){
     var xhr=this,u=xhrUrls.get(xhr)||'';
-    if(u.toLowerCase().includes('bookmark')){xhr.addEventListener('load',function(){try{processData(JSON.parse(xhr.responseText));}catch(ex){}});}
+    if(u.includes('/graphql/')){xhr.addEventListener('load',function(){try{processData(JSON.parse(xhr.responseText));}catch(ex){}});}
     return origSend.apply(this,arguments);
   };
-  showToast('\u2705 Active! Scroll your bookmarks \u2014 counter updates above.','#1e1b4b');
+  showToast('\u2705 Active! Scroll your '+label+' \u2014 counter updates above.','#1e1b4b');
 })();`
 
 const BOOKMARKLET_HREF = `javascript:${encodeURIComponent(BOOKMARKLET_SCRIPT)}`
 
 const CONSOLE_SCRIPT = `(async function() {
   if (!location.hostname.includes('twitter.com') && !location.hostname.includes('x.com')) {
-    alert('Run this on x.com/i/bookmarks'); return;
+    alert('Run this on x.com/i/bookmarks or x.com/username/likes'); return;
   }
+  const isLikes = location.pathname.includes('/likes');
+  const source = isLikes ? 'like' : 'bookmark';
+  const label = isLikes ? 'likes' : 'bookmarks';
   const all = [], seen = new Set();
   function addTweet(t) {
     if (!t?.rest_id || seen.has(t.rest_id)) return;
@@ -229,7 +239,7 @@ const CONSOLE_SCRIPT = `(async function() {
       hashtags: (leg.entities?.hashtags ?? []).map(h => h.text),
       urls: (leg.entities?.urls ?? []).map(u => u.expanded_url).filter(Boolean)
     });
-    btn.textContent = \`Export \${all.length} bookmarks →\`;
+    btn.textContent = \`Export \${all.length} \${label} →\`;
   }
   function processEntry(e) {
     if (!e) return;
@@ -243,11 +253,15 @@ const CONSOLE_SCRIPT = `(async function() {
     }
     if (e.content?.items) e.content.items.forEach(i => processEntry({ content: i.item ?? i }));
   }
+  function findInstructions(obj, depth = 0) {
+    if (!obj || typeof obj !== 'object' || depth > 6) return null;
+    if (Array.isArray(obj)) return null;
+    if (Array.isArray(obj.instructions)) return obj.instructions;
+    for (const k of Object.keys(obj)) { const r = findInstructions(obj[k], depth + 1); if (r) return r; }
+    return null;
+  }
   function processData(d) {
-    const instr =
-      d?.data?.bookmark_timeline_v2?.timeline?.instructions ??
-      d?.data?.bookmarks_timeline?.timeline?.instructions ??
-      d?.data?.timeline_by_id?.timeline?.instructions ?? [];
+    const instr = findInstructions(d) ?? [];
     instr.forEach(i => {
       (i.entries ?? []).forEach(processEntry);
       (i.moduleItems ?? []).forEach(processEntry);
@@ -268,13 +282,13 @@ const CONSOLE_SCRIPT = `(async function() {
     XMLHttpRequest.prototype.open = origOpen;
     XMLHttpRequest.prototype.send = origSend;
     [btn, autoBtn].forEach(el => { try { document.body.removeChild(el); } catch(e) {} });
-    if (!all.length) { alert('No bookmarks captured. Use Auto-scroll or scroll manually first.'); return; }
-    const blob = new Blob([JSON.stringify({ bookmarks: all }, null, 2)], { type: 'application/json' });
+    if (!all.length) { alert(\`No \${label} captured. Use Auto-scroll or scroll manually first.\`); return; }
+    const blob = new Blob([JSON.stringify({ bookmarks: all, source }, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'bookmarks.json'; a.click();
+    a.href = url; a.download = \`\${source}s.json\`; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    console.log(\`✅ Downloaded \${all.length} bookmarks!\`);
+    console.log(\`✅ Downloaded \${all.length} \${label}!\`);
   }
   btn.onclick = doExport;
   const autoBtn = document.createElement('button');
@@ -304,7 +318,7 @@ const CONSOLE_SCRIPT = `(async function() {
             autoScrolling = false;
             autoBtn.textContent = \`✅ Done — \${all.length} captured\`;
             autoBtn.style.cssText += ';background:#14532d;color:#86efac;border:1px solid #166534';
-            console.log(\`✅ Auto-scroll complete! \${all.length} bookmarks ready. Click Export.\`);
+            console.log(\`✅ Auto-scroll complete! \${all.length} \${label} ready. Click Export.\`);
             return;
           }
           stagnant = 0;
@@ -328,7 +342,7 @@ const CONSOLE_SCRIPT = `(async function() {
     const r = await origFetch.apply(this, args);
     try {
       const u = args[0] instanceof Request ? args[0].url : String(args[0]);
-      if (u.toLowerCase().includes('bookmark')) {
+      if (u.includes('/graphql/')) {
         const d = await r.clone().json();
         processData(d);
       }
@@ -344,14 +358,14 @@ const CONSOLE_SCRIPT = `(async function() {
   };
   XMLHttpRequest.prototype.send = function(...args) {
     const xhr = this, u = xhrUrls.get(xhr) ?? '';
-    if (u.toLowerCase().includes('bookmark')) {
+    if (u.includes('/graphql/')) {
       xhr.addEventListener('load', function() {
         try { processData(JSON.parse(xhr.responseText)); } catch(e) {}
       });
     }
     return origSend.apply(this, args);
   };
-  console.log('✅ Script active. Scroll through your bookmarks, then click the purple button.');
+  console.log(\`✅ Script active. Scroll through your \${label}, then click the purple button.\`);
 })();`
 
 // ── Draggable bookmarklet link ────────────────────────────────────────────────
@@ -459,7 +473,10 @@ function UploadZone({ onFile }: { onFile: (file: File) => void }) {
   )
 }
 
-function BookmarkletTab({ onFile }: { onFile: (file: File) => void }) {
+function BookmarkletTab({ onFile, importSource }: { onFile: (file: File) => void; importSource: 'bookmark' | 'like' }) {
+  const targetUrl = importSource === 'like' ? 'https://x.com' : 'https://x.com/i/bookmarks'
+  const targetLabel = importSource === 'like' ? 'x.com/YourUsername/likes' : 'x.com/i/bookmarks'
+  const sourceLabel = importSource === 'like' ? 'likes' : 'bookmarks'
   const steps = [
     {
       num: 1,
@@ -499,12 +516,12 @@ function BookmarkletTab({ onFile }: { onFile: (file: File) => void }) {
         <span>
           Acesse{' '}
           <a
-            href="https://x.com/i/bookmarks"
+            href={targetUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="text-indigo-400 hover:underline inline-flex items-center gap-1"
           >
-            x.com/i/bookmarks <ExternalLink size={11} />
+            {targetLabel} <ExternalLink size={11} />
           </a>{' '}
           enquanto logado
         </span>
@@ -564,7 +581,10 @@ function BookmarkletTab({ onFile }: { onFile: (file: File) => void }) {
   )
 }
 
-function ConsoleTab({ onFile }: { onFile: (file: File) => void }) {
+function ConsoleTab({ onFile, importSource }: { onFile: (file: File) => void; importSource: 'bookmark' | 'like' }) {
+  const targetUrl = importSource === 'like' ? 'https://x.com' : 'https://x.com/i/bookmarks'
+  const targetLabel = importSource === 'like' ? 'x.com/YourUsername/likes' : 'x.com/i/bookmarks'
+  const sourceLabel = importSource === 'like' ? 'likes' : 'bookmarks'
   const steps = [
     {
       num: 1,
@@ -572,12 +592,12 @@ function ConsoleTab({ onFile }: { onFile: (file: File) => void }) {
         <span>
           Acesse{' '}
           <a
-            href="https://x.com/i/bookmarks"
+            href={targetUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="text-indigo-400 hover:underline inline-flex items-center gap-1"
           >
-            x.com/i/bookmarks <ExternalLink size={11} />
+            {targetLabel} <ExternalLink size={11} />
           </a>{' '}
           enquanto logado
         </span>
@@ -646,13 +666,269 @@ function ConsoleTab({ onFile }: { onFile: (file: File) => void }) {
   )
 }
 
-function InstructionsStep({ onFile }: { onFile: (file: File) => void }) {
+// ── Live Import Tab ───────────────────────────────────────────────────────────
+
+interface LiveConfig {
+  hasCredentials: boolean
+  syncInterval: string
+  lastSync: string | null
+  schedulerRunning: boolean
+}
+
+const INTERVAL_LABELS: Record<string, string> = {
+  off: 'Off',
+  '1h': 'Every hour',
+  '4h': 'Every 4 hours',
+  '8h': 'Every 8 hours',
+  '24h': 'Every 24 hours',
+}
+
+function LiveImportTab({ onSynced }: { onSynced: (result: ImportResult) => void }) {
+  const [authToken, setAuthToken] = useState('')
+  const [ct0, setCt0] = useState('')
+  const [config, setConfig] = useState<LiveConfig | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [interval, setInterval_] = useState('off')
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetch('/api/import/live')
+      .then(async (r) => {
+        if (!r.ok) {
+          setError('Failed to load sync configuration')
+          return
+        }
+        const data: LiveConfig = await r.json()
+        setConfig(data)
+        setInterval_(data.syncInterval)
+      })
+      .catch(() => {
+        setError('Could not connect to the server')
+      })
+  }, [])
+
+  async function handleSaveCredentials() {
+    if (!authToken.trim() || !ct0.trim()) {
+      setError('Both auth_token and ct0 are required')
+      return
+    }
+    setError('')
+    setSaving(true)
+    try {
+      const res = await fetch('/api/import/live', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ authToken: authToken.trim(), ct0: ct0.trim() }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error ?? 'Failed to save')
+      }
+      setConfig((c) => c
+        ? { ...c, hasCredentials: true }
+        : { hasCredentials: true, syncInterval: 'off', lastSync: null, schedulerRunning: false },
+      )
+      setAuthToken('')
+      setCt0('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDeleteCredentials() {
+    try {
+      const res = await fetch('/api/import/live', { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to remove credentials')
+      setConfig((c) => c ? { ...c, hasCredentials: false, lastSync: null, schedulerRunning: false, syncInterval: 'off' } : c)
+      setInterval_('off')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove credentials')
+    }
+  }
+
+  async function handleSync() {
+    setError('')
+    setSyncing(true)
+    try {
+      const res = await fetch('/api/import/live/sync', { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Sync failed')
+      const imported = data.imported ?? 0
+      const skipped = data.skipped ?? 0
+      onSynced({ imported, skipped, total: imported + skipped })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sync failed')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  async function handleIntervalChange(newInterval: string) {
+    const previousInterval = interval
+    setInterval_(newInterval)
+    try {
+      const res = await fetch('/api/import/live', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ syncInterval: newInterval }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error ?? 'Failed to update sync schedule')
+      }
+      setConfig((c) => c ? { ...c, syncInterval: newInterval, schedulerRunning: newInterval !== 'off' } : c)
+    } catch (err) {
+      setInterval_(previousInterval)
+      setError(err instanceof Error ? err.message : 'Failed to update sync schedule')
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* How to get credentials */}
+      <div className="space-y-3">
+        <p className="text-sm text-zinc-300 font-medium flex items-center gap-2">
+          <KeyRound size={14} className="text-indigo-400" />
+          X Session Cookies
+        </p>
+        <div className="text-xs text-zinc-500 space-y-1.5 pl-5">
+          <p>1. Open <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">x.com</a> and log in</p>
+          <p>2. Open DevTools (<kbd className="bg-zinc-800 border border-zinc-700 px-1 py-0.5 rounded font-mono">F12</kbd>) &rarr; <strong className="text-zinc-400">Application</strong> tab &rarr; <strong className="text-zinc-400">Cookies</strong></p>
+          <p>3. Copy <code className="bg-zinc-800 px-1 py-0.5 rounded">auth_token</code> and <code className="bg-zinc-800 px-1 py-0.5 rounded">ct0</code></p>
+        </div>
+      </div>
+
+      {/* Credential status + input */}
+      {config?.hasCredentials ? (
+        <div className="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-emerald-500/8 border border-emerald-500/20">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle size={15} className="text-emerald-400 shrink-0" />
+            <span className="text-sm text-emerald-300">Credentials saved</span>
+            {config.lastSync && (
+              <span className="text-xs text-zinc-500">
+                &middot; Last sync: {new Date(config.lastSync).toLocaleString()}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={handleDeleteCredentials}
+            className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            title="Remove credentials"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <input
+              type="password"
+              placeholder="auth_token"
+              value={authToken}
+              onChange={(e) => setAuthToken(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500/50 font-mono"
+            />
+            <input
+              type="password"
+              placeholder="ct0"
+              value={ct0}
+              onChange={(e) => setCt0(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500/50 font-mono"
+            />
+          </div>
+          <button
+            onClick={handleSaveCredentials}
+            disabled={saving || !authToken.trim() || !ct0.trim()}
+            className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
+          >
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />}
+            {saving ? 'Saving...' : 'Save Credentials'}
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+          {error}
+        </p>
+      )}
+
+      {/* Sync button */}
+      {config?.hasCredentials && (
+        <>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-medium transition-colors flex items-center justify-center gap-2"
+          >
+            {syncing ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Syncing bookmarks...
+              </>
+            ) : (
+              <>
+                <RefreshCw size={16} />
+                Sync Now
+              </>
+            )}
+          </button>
+
+          {/* Auto-sync schedule */}
+          <div className="border-t border-zinc-800 pt-5">
+            <p className="text-xs text-zinc-500 mb-3 uppercase tracking-wider font-medium flex items-center gap-1.5">
+              <Clock size={12} />
+              Auto-Sync Schedule
+            </p>
+            <div className="grid grid-cols-5 gap-1.5">
+              {Object.entries(INTERVAL_LABELS).map(([value, label]) => (
+                <button
+                  key={value}
+                  onClick={() => handleIntervalChange(value)}
+                  className={`px-2 py-2 rounded-lg text-xs font-medium transition-all ${
+                    interval === value
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-zinc-800 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {interval !== 'off' && (
+              <p className="text-xs text-zinc-600 mt-2">
+                Siftly will automatically sync new bookmarks from X {INTERVAL_LABELS[interval]?.toLowerCase()}
+              </p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function InstructionsStep({ onFile, importSource, onLiveSynced }: { onFile: (file: File) => void; importSource: 'bookmark' | 'like'; onLiveSynced: (result: ImportResult) => void }) {
   const [method, setMethod] = useState<Method>('bookmarklet')
 
   return (
     <div>
       {/* Method tabs */}
       <div className="flex gap-1 mb-6 p-1 bg-zinc-800 rounded-xl">
+        <button
+          onClick={() => setMethod('live')}
+          className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+            method === 'live'
+              ? 'bg-zinc-900 text-zinc-100 shadow-sm'
+              : 'text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          <RefreshCw size={13} className="inline -mt-0.5 mr-1" />
+          Live Import
+          <span className="ml-1.5 text-xs text-indigo-400 font-normal">Recommended</span>
+        </button>
         <button
           onClick={() => setMethod('bookmarklet')}
           className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -672,14 +948,16 @@ function InstructionsStep({ onFile }: { onFile: (file: File) => void }) {
               : 'text-zinc-500 hover:text-zinc-300'
           }`}
         >
-          {'</>'} Console Script
+          {'</>'} Console
         </button>
       </div>
 
-      {method === 'bookmarklet' ? (
-        <BookmarkletTab onFile={onFile} />
+      {method === 'live' ? (
+        <LiveImportTab onSynced={onLiveSynced} />
+      ) : method === 'bookmarklet' ? (
+        <BookmarkletTab onFile={onFile} importSource={importSource} />
       ) : (
-        <ConsoleTab onFile={onFile} />
+        <ConsoleTab onFile={onFile} importSource={importSource} />
       )}
     </div>
   )
@@ -718,12 +996,20 @@ function ImportingStep({ result }: {
   )
 }
 
-function CategorizeStep({ importedCount }: { importedCount: number }) {
+function CategorizeStep({ importedCount, force = false }: { importedCount: number; force?: boolean }) {
   const [status, setStatus] = useState<CategorizeStatus | null>(null)
   const [running, setRunning] = useState(false)
   const [stopping, setStopping] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Clean up poll interval on unmount
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
+  }, [])
 
   // On mount: attach to running pipeline, or start one if new bookmarks were imported.
   // importedCount: -1 = direct trigger (not from import), 0 = all skipped, >0 = new bookmarks
@@ -743,10 +1029,10 @@ function CategorizeStep({ importedCount }: { importedCount: number }) {
           pollStatus()
         } else {
           // Start a fresh pipeline for the newly imported bookmarks
-          void startCategorization()
+          void startCategorization(force)
         }
       } catch {
-        void startCategorization()
+        void startCategorization(force)
       }
     })()
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -755,11 +1041,15 @@ function CategorizeStep({ importedCount }: { importedCount: number }) {
   async function stopCategorization() {
     setStopping(true)
     try {
-      await fetch('/api/categorize', { method: 'DELETE' })
-    } catch { /* ignore */ }
+      const res = await fetch('/api/categorize', { method: 'DELETE' })
+      if (!res.ok) throw new Error('Server returned ' + res.status)
+    } catch {
+      setStopping(false)
+      setError('Failed to stop pipeline — try again')
+    }
   }
 
-  async function startCategorization() {
+  async function startCategorization(force = false) {
     setError('')
     setRunning(true)
     setStopping(false)
@@ -768,7 +1058,7 @@ function CategorizeStep({ importedCount }: { importedCount: number }) {
       const res = await fetch('/api/categorize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify(force ? { force: true } : {}),
       })
       if (!res.ok && res.status !== 409) {
         const data = await res.json() as { error?: string }
@@ -782,21 +1072,30 @@ function CategorizeStep({ importedCount }: { importedCount: number }) {
   }
 
   function pollStatus() {
-    const interval = setInterval(async () => {
+    if (pollRef.current) clearInterval(pollRef.current)
+    let pollFailures = 0
+    pollRef.current = setInterval(async () => {
       try {
         const res = await fetch('/api/categorize')
         const data = await res.json() as CategorizeStatus
+        pollFailures = 0
         setStatus(data)
         if (data.status === 'stopping') setStopping(true)
         if (data.status === 'idle') {
-          clearInterval(interval)
+          if (pollRef.current) clearInterval(pollRef.current)
+          pollRef.current = null
           setDone(true)
           setRunning(false)
           setStopping(false)
         }
       } catch {
-        clearInterval(interval)
-        setRunning(false)
+        pollFailures++
+        if (pollFailures >= 5) {
+          if (pollRef.current) clearInterval(pollRef.current)
+          pollRef.current = null
+          setRunning(false)
+          setError('Lost connection to the server. The pipeline may still be running — refresh to check.')
+        }
       }
     }, 1000)
   }
@@ -943,23 +1242,26 @@ function CategorizeStep({ importedCount }: { importedCount: number }) {
   )
 }
 
-function UncategorizedBanner({ onCategorize }: { onCategorize: () => void }) {
+function UncategorizedBanner({ onCategorize, onReprocess }: { onCategorize: () => void; onReprocess: () => void }) {
   const [totalBookmarks, setTotalBookmarks] = useState<number | null>(null)
   const [uncategorized, setUncategorized] = useState<number | null>(null)
 
   useEffect(() => {
     fetch('/api/stats')
-      .then((r) => r.json())
-      .then((d: { totalBookmarks?: number; totalCategories?: number }) => {
-        const total = d.totalBookmarks ?? 0
-        const hasCategories = (d.totalCategories ?? 0) > 0
-        setTotalBookmarks(total)
-        setUncategorized(hasCategories ? 0 : total)
+      .then((r) => {
+        if (!r.ok) throw new Error('Stats fetch failed')
+        return r.json()
       })
-      .catch(() => {})
+      .then((d: { totalBookmarks?: number; uncategorizedCount?: number }) => {
+        setTotalBookmarks(d.totalBookmarks ?? 0)
+        setUncategorized(d.uncategorizedCount ?? 0)
+      })
+      .catch(() => {
+        // Stats unavailable — banner stays hidden, not a critical failure
+      })
   }, [])
 
-  if (!uncategorized || uncategorized === 0) return null
+  if (!totalBookmarks || totalBookmarks === 0) return null
 
   return (
     <div className="flex items-center justify-between gap-4 mb-6 px-4 py-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/25">
@@ -982,8 +1284,11 @@ function UncategorizedBanner({ onCategorize }: { onCategorize: () => void }) {
 
 export default function ImportPage() {
   const [step, setStep] = useState<Step>(1)
+  const [importSource, setImportSource] = useState<'bookmark' | 'like'>('bookmark')
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [importing, setImporting] = useState(false)
+  const [importError, setImportError] = useState('')
+  const [forceReprocess, setForceReprocess] = useState(false)
 
   // Auto-resume to step 3 if the pipeline is already running (e.g. user navigated away and back)
   useEffect(() => {
@@ -995,13 +1300,21 @@ export default function ImportPage() {
       .catch(() => {})
   }, [])
 
+  function handleLiveSynced(result: ImportResult) {
+    setImportResult(result)
+    setStep(2)
+    setTimeout(() => setStep(3), 1500)
+  }
+
   async function handleFile(file: File) {
     setStep(2)
     setImporting(true)
+    setImportError('')
 
     try {
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('source', importSource)
 
       const res = await fetch('/api/import', { method: 'POST', body: formData })
       const data = await res.json()
@@ -1019,7 +1332,8 @@ export default function ImportPage() {
       setTimeout(() => setStep(3), 1500)
     } catch (err) {
       console.error('Import error:', err)
-      setImportResult({ imported: 0, skipped: 0, total: 0 })
+      setImportError(err instanceof Error ? err.message : 'Import failed')
+      setStep(1)
     } finally {
       setImporting(false)
     }
@@ -1032,18 +1346,50 @@ export default function ImportPage() {
         <p className="text-zinc-400 mt-1">Exporte seus bookmarks do X/Twitter como JSON e faça o upload abaixo.</p>
       </div>
 
-      {step === 1 && <UncategorizedBanner onCategorize={() => setStep(3)} />}
+      {/* Source selector */}
+      {step === 1 && (
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setImportSource('bookmark')}
+            className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
+              importSource === 'bookmark'
+                ? 'bg-indigo-600 border-indigo-500 text-white'
+                : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
+            }`}
+          >
+            Bookmarks
+          </button>
+          <button
+            onClick={() => setImportSource('like')}
+            className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
+              importSource === 'like'
+                ? 'bg-pink-600 border-pink-500 text-white'
+                : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
+            }`}
+          >
+            Likes
+          </button>
+        </div>
+      )}
+
+      {step === 1 && <UncategorizedBanner onCategorize={() => setStep(3)} onReprocess={() => { setForceReprocess(true); setStep(3) }} />}
+
+      {importError && (
+        <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 mb-4">
+          Import failed: {importError}
+        </p>
+      )}
 
       <StepIndicator current={step} />
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-        {step === 1 && <InstructionsStep onFile={handleFile} />}
+        {step === 1 && <InstructionsStep onFile={handleFile} importSource={importSource} onLiveSynced={handleLiveSynced} />}
         {step === 2 && (
           <ImportingStep
             result={importing ? null : importResult}
           />
         )}
-        {step === 3 && <CategorizeStep importedCount={importResult ? importResult.imported : -1} />}
+        {step === 3 && <CategorizeStep importedCount={importResult ? importResult.imported : -1} force={forceReprocess} />}
       </div>
     </div>
   )

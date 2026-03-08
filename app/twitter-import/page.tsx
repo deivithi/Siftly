@@ -24,6 +24,7 @@ export default function TwitterImportPage() {
   const [success, setSuccess] = useState<{ imported: number; skipped: number } | null>(null)
   const [bookmarkletCode, setBookmarkletCode] = useState('')
   const linkRef = useRef<HTMLAnchorElement>(null)
+  const [bookmarkletCode, setBookmarkletCode] = useState('')
 
   useEffect(() => {
     const origin = window.location.origin

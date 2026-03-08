@@ -3,6 +3,9 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import Anthropic from '@anthropic-ai/sdk'
 
+// Re-export CLI utilities for text-based tasks
+export { claudePrompt, getCliAvailability, modelNameToCliAlias } from './claude-cli'
+
 interface ClaudeOAuthCredentials {
   accessToken: string
   refreshToken: string
@@ -166,4 +169,59 @@ export async function getCliAuthStatus(): Promise<{
   if (!creds) return { available: false }
   const expired = Date.now() > creds.expiresAt
   return { available: true, subscriptionType: creds.subscriptionType, expired }
+}
+
+/**
+ * Resolves an Anthropic client using the first available auth method:
+ * 1. Override key (explicit key from request)
+ * 2. DB-saved API key (pass pre-fetched to avoid async)
+ * 3. Logged-in Claude CLI session (OAuth Bearer via keychain)
+ * 4. ANTHROPIC_CLI_KEY env var (OAuth token for Docker/Linux)
+ * 5. ANTHROPIC_API_KEY env var
+ * 6. Local proxy via ANTHROPIC_BASE_URL
+ *
+ * CLI auth is checked before env var so .env placeholders don't block CLI users.
+ *
+ * @param options.overrideKey - Explicit key from request body
+ * @param options.dbKey - Pre-fetched key from prisma.setting (avoids async import)
+ * @param options.baseURL - Custom base URL (defaults to ANTHROPIC_BASE_URL env)
+ * @throws Error if no auth method is available
+ */
+export function resolveAnthropicClient(options: {
+  overrideKey?: string
+  dbKey?: string
+  baseURL?: string
+} = {}): Anthropic {
+  const baseURL = options.baseURL ?? process.env.ANTHROPIC_BASE_URL
+
+  // 1. Override key from request
+  if (options.overrideKey?.trim()) {
+    return new Anthropic({ apiKey: options.overrideKey.trim(), ...(baseURL ? { baseURL } : {}) })
+  }
+
+  // 2. DB-saved key
+  if (options.dbKey?.trim()) {
+    return new Anthropic({ apiKey: options.dbKey.trim(), ...(baseURL ? { baseURL } : {}) })
+  }
+
+  // 3. CLI auth via keychain (before env var to avoid .env placeholder blocking)
+  const cliClient = createCliAnthropicClient(baseURL)
+  if (cliClient) return cliClient
+
+  // 4. ANTHROPIC_CLI_KEY env var (Docker/Linux: CLI OAuth token passed via env)
+  const envCliClient = createEnvCliAnthropicClient(baseURL)
+  if (envCliClient) return envCliClient
+
+  // 5. ANTHROPIC_API_KEY environment variable
+  const envKey = process.env.ANTHROPIC_API_KEY?.trim()
+  if (envKey) {
+    return new Anthropic({ apiKey: envKey, ...(baseURL ? { baseURL } : {}) })
+  }
+
+  // 6. Local proxy (assumes proxy handles auth)
+  if (baseURL) {
+    return new Anthropic({ apiKey: 'proxy', baseURL })
+  }
+
+  throw new Error('No Anthropic API key found. Add your key in Settings, or log in with Claude CLI.')
 }

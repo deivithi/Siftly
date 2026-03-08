@@ -104,7 +104,7 @@ function ApiKeyField({
 }: {
   label: string
   placeholder: string
-  fieldKey: 'anthropicApiKey' | 'openaiApiKey'
+  fieldKey: 'anthropicApiKey'
   hint: string
   docHref: string
   onToast: (t: Toast) => void
@@ -123,7 +123,7 @@ function ApiKeyField({
     fetch('/api/settings')
       .then((r) => r.json())
       .then((d: Record<string, unknown>) => {
-        const hasKey = d[fieldKey === 'anthropicApiKey' ? 'hasAnthropicKey' : 'hasOpenaiKey']
+        const hasKey = d['hasAnthropicKey']
         const masked = d[fieldKey] as string | null
         if (hasKey && masked) setSavedMasked(masked)
       })
@@ -302,7 +302,7 @@ function ModelSelector({
   onToast,
 }: {
   models: { value: string; label: string; description: string }[]
-  settingKey: 'anthropicModel' | 'openaiModel'
+  settingKey: 'anthropicModel'
   defaultValue: string
   onToast: (t: Toast) => void
 }) {

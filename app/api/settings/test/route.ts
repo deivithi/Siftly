@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
 import prisma from '@/lib/db'
-import { createCliAnthropicClient, getCliAuthStatus } from '@/lib/claude-cli-auth'
+import { resolveAnthropicClient, getCliAuthStatus } from '@/lib/claude-cli-auth'
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   let body: { provider?: string } = {}
@@ -16,8 +15,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   if (provider === 'anthropic') {
     const setting = await prisma.setting.findUnique({ where: { key: 'anthropicApiKey' } })
-    const apiKey = setting?.value?.trim() || process.env.ANTHROPIC_API_KEY || ''
-    const baseURL = process.env.ANTHROPIC_BASE_URL
+    const dbKey = setting?.value?.trim()
 
     let client: Anthropic
     if (apiKey) {
@@ -31,7 +29,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
         return NextResponse.json({ working: false, error: 'No API key found. Add one in Settings or log in with Claude CLI.' })
       }
-      client = cliClient
+      return NextResponse.json({ working: false, error: 'No API key found. Add one in Settings or log in with Claude CLI.' })
     }
 
     try {

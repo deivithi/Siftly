@@ -33,13 +33,15 @@ async function queryDashboard() {
     prisma.bookmark.count({ where: { categories: { none: {} } } }),
     prisma.bookmark.findMany(RECENT_QUERY),
     prisma.category.findMany(TOP_CATS_QUERY),
+    prisma.bookmark.count({ where: { source: 'bookmark' } }),
+    prisma.bookmark.count({ where: { source: 'like' } }),
   ])
 }
 
 type QueryResult = Awaited<ReturnType<typeof queryDashboard>>
 
 function buildDashboardData(result: QueryResult) {
-  const [totalBookmarks, totalCategories, totalMedia, uncategorizedCount, recentRaw, catsRaw] = result
+  const [totalBookmarks, totalCategories, totalMedia, uncategorizedCount, recentRaw, catsRaw, bookmarkSourceCount, likeSourceCount] = result
 
   const recentBookmarks: BookmarkWithMedia[] = recentRaw.map((b) => ({
     id: b.id,
@@ -61,6 +63,8 @@ function buildDashboardData(result: QueryResult) {
 
   return {
     totalBookmarks,
+    bookmarkSourceCount,
+    likeSourceCount,
     totalCategories,
     totalMedia,
     uncategorizedCount,
@@ -76,6 +80,8 @@ function buildDashboardData(result: QueryResult) {
 
 const EMPTY_DASHBOARD = {
   totalBookmarks: 0,
+  bookmarkSourceCount: 0,
+  likeSourceCount: 0,
   totalCategories: 0,
   totalMedia: 0,
   uncategorizedCount: 0,

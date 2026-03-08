@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import prisma from '@/lib/db'
 import { ftsSearch } from '@/lib/fts'
-import { createCliAnthropicClient } from '@/lib/claude-cli-auth'
+import { resolveAnthropicClient } from '@/lib/claude-cli-auth'
+import { getAnthropicModel } from '@/lib/settings'
+import { extractKeywords } from '@/lib/search-utils'
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
 interface CacheEntry { results: unknown; expiresAt: number }
@@ -23,8 +25,6 @@ function setCache(key: string, results: unknown): void {
 // ─── Module-level caches (avoid DB roundtrips on every search) ────────────────
 let _apiKey: string | null = null
 let _apiKeyExpiry = 0
-let _model: string | null = null
-let _modelExpiry = 0
 let _categoriesCache: { slug: string; name: string; description: string | null }[] | null = null
 let _categoriesCacheExpiry = 0
 
@@ -60,24 +60,6 @@ async function getAllCategories() {
   _categoriesCache = await prisma.category.findMany({ select: { slug: true, name: true, description: true } })
   _categoriesCacheExpiry = Date.now() + 2 * 60 * 1000
   return _categoriesCache
-}
-
-/** Extract meaningful keywords — keeps short important terms like "KYC", "AI" */
-function extractKeywords(query: string): string[] {
-  const stopWords = new Set([
-    'a', 'an', 'the', 'and', 'or', 'for', 'in', 'on', 'at', 'to', 'of',
-    'is', 'it', 'about', 'that', 'with', 'by', 'this', 'my', 'me', 'i',
-    'something', 'anything', 'some', 'any', 'show', 'find', 'get', 'use',
-    'regarding', 'context', 'would', 'could', 'should', 'want', 'need',
-    'looking', 'related', 'using', 'used', 'based',
-  ])
-  return query
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .split(/\s+/)
-    // Allow short words (2+ chars) so "AI", "ML", "KYC" survive
-    .filter((w) => w.length >= 2 && !stopWords.has(w))
-    .slice(0, 10)
 }
 
 /**

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import prisma from '@/lib/db'
 import { analyzeBatch } from '@/lib/vision-analyzer'
-import { createCliAnthropicClient } from '@/lib/claude-cli-auth'
+import { resolveAnthropicClient } from '@/lib/claude-cli-auth'
 
 // GET: returns progress stats
 export async function GET(): Promise<NextResponse> {
@@ -30,6 +30,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const client: Anthropic = cliClient
     ?? (envKey ? new Anthropic({ apiKey: envKey, ...(baseURL ? { baseURL } : {}) }) : new Anthropic({ apiKey: '', ...(baseURL ? { baseURL } : {}) }))
 
+  let client
+  try {
+    client = resolveAnthropicClient({ dbKey })
+  } catch {
+    return NextResponse.json({ error: 'No API key configured. Add your key in Settings or sign in to Claude CLI.' }, { status: 400 })
+  }
+
+  return runAnalysis(client, batchSize)
+}
+
+async function runAnalysis(client: Anthropic, batchSize: number): Promise<NextResponse> {
   const untagged = await prisma.mediaItem.findMany({
     where: { imageTags: null, type: { in: ['photo', 'gif'] } },
     take: batchSize,
