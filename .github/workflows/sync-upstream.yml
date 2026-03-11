@@ -2,9 +2,9 @@ name: Sync upstream + redeploy
 
 on:
   schedule:
-    # Verifica atualizações todo dia às 08:00 UTC (05:00 horário de Brasília)
+    # Verifica atualizacoes todo dia as 08:00 UTC (05:00 horario de Brasilia)
     - cron: '0 8 * * *'
-  workflow_dispatch: # permite execução manual
+  workflow_dispatch: # permite execucao manual
 
 jobs:
   sync:
@@ -36,23 +36,35 @@ jobs:
           MERGE_BASE=$(git merge-base HEAD upstream/main)
           if [ "$UPSTREAM_SHA" = "$MERGE_BASE" ]; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
-            echo "Sem novas atualizações no upstream."
+            echo "Sem novas atualizacoes no upstream."
           else
             echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "Novas atualizações encontradas!"
+            echo "Novas atualizacoes encontradas!"
             git log --oneline "$MERGE_BASE..upstream/main"
           fi
 
-      - name: Merge upstream (mantendo nossas customizações)
+      - name: Resolve conflitos modify/delete conhecidos
         if: steps.check.outputs.has_changes == 'true'
         run: |
-          # --strategy-option=ours garante que nossas modificações prevalecem em conflitos
+          # Remove arquivos que o upstream deletou mas que existem no fork
+          # Evita conflito modify/delete que --strategy-option=ours nao resolve
+          git rm -f app/twitter-import/page.tsx 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "Nenhum arquivo de conflito pre-removido."
+          else
+            git commit -m "chore: remove arquivos deletados no upstream antes do merge"
+          fi
+
+      - name: Merge upstream (mantendo nossas customizacoes)
+        if: steps.check.outputs.has_changes == 'true'
+        run: |
+          # --strategy-option=ours garante que nossas modificacoes prevalecem em conflitos
           git merge upstream/main \
             --no-edit \
             --strategy-option=ours \
             -m "chore: sync upstream viperrcrypto/Siftly" \
           || {
-            echo "❌ Conflito de merge não resolvível automaticamente."
+            echo "Conflito de merge nao resolvivel automaticamente."
             git merge --abort
             exit 1
           }
